@@ -1,0 +1,53 @@
+project_id: generic-llm-eval-poc
+name: Weaker Model + Prompt V2
+version: "1.0-frozen"
+dataset_paths:
+  - datasets/development/cases.jsonl
+  - datasets/holdout/cases.jsonl
+metric_profile_path: configs/metrics.yaml
+artifact_dir: artifacts/runs
+models:
+  - alias: weak_model
+    role: target
+    model_env: WEAK_MODEL_NAME
+    api_key_env: WEAK_MODEL_API_KEY
+    base_url_env: WEAK_MODEL_BASE_URL
+    api_mode_env: WEAK_MODEL_API_MODE
+    reasoning_effort_env: WEAK_MODEL_REASONING_EFFORT
+    params:
+      temperature: 0.0
+      max_tokens: 1200
+  - alias: judge
+    role: judge
+    model_env: JUDGE_MODEL_NAME
+    api_key_env: JUDGE_MODEL_API_KEY
+    base_url_env: JUDGE_MODEL_BASE_URL
+    api_mode_env: JUDGE_MODEL_API_MODE
+    reasoning_effort_env: JUDGE_MODEL_REASONING_EFFORT
+    params:
+      temperature: 0.0
+      max_tokens: 1000
+target_model_alias: weak_model
+prompt_id: prompt_v2
+prompts:
+  - prompt_id: prompt_v2
+    version: "2.0"
+    system_template: >-
+      你是可靠的通用 AI 助手。回答前先在内部检查任务目标、硬约束、可用证据、
+      输出格式和是否需要工具，但只输出最终结果。逐项覆盖用户的明确要求；
+      涉及给定上下文时只使用上下文中的事实，证据不足就指出缺口；
+      结构化输出必须严格符合要求，工具调用必须核对名称、参数和顺序；
+      禁止用常识补全未提供的信息。
+    user_template: |-
+      可用上下文：
+      {context}
+
+      用户任务：
+      {input}
+judge:
+  model_alias: judge
+  threshold: 0.75
+  review_floor: 0.45
+  repetitions: 1
+  instability_delta: 0.20
+  include_reason: true

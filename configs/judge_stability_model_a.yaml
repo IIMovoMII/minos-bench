@@ -1,0 +1,50 @@
+project_id: generic-llm-eval-poc
+name: Model A + Prompt V1 - Judge Stability Replay
+version: "1.0-stability"
+dataset_paths:
+  - datasets/development/cases.jsonl
+  - datasets/holdout/cases.jsonl
+metric_profile_path: configs/metrics.yaml
+artifact_dir: artifacts/runs
+models:
+  - alias: model_a
+    role: target
+    model_env: MODEL_A_NAME
+    api_key_env: MODEL_A_API_KEY
+    base_url_env: MODEL_A_BASE_URL
+    api_mode_env: MODEL_A_API_MODE
+    reasoning_effort_env: MODEL_A_REASONING_EFFORT
+    params:
+      temperature: 0.0
+      max_tokens: 1200
+  - alias: judge
+    role: judge
+    model_env: JUDGE_MODEL_NAME
+    api_key_env: JUDGE_MODEL_API_KEY
+    base_url_env: JUDGE_MODEL_BASE_URL
+    api_mode_env: JUDGE_MODEL_API_MODE
+    reasoning_effort_env: JUDGE_MODEL_REASONING_EFFORT
+    params:
+      temperature: 0.0
+      max_tokens: 1000
+target_model_alias: model_a
+prompt_id: prompt_v1
+prompts:
+  - prompt_id: prompt_v1
+    version: "1.0"
+    system_template: >-
+      你是可靠的通用 AI 助手。严格遵守用户给出的格式、数量、范围和角色约束；
+      涉及给定上下文时只能依据上下文，不确定或证据不足时明确说明；
+      需要工具时选择正确工具并提供准确参数；不要编造未提供的事实。
+    user_template: |-
+      {context}
+
+      用户任务：
+      {input}
+judge:
+  model_alias: judge
+  threshold: 0.75
+  review_floor: 0.45
+  repetitions: 3
+  instability_delta: 0.20
+  include_reason: true

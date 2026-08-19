@@ -1,0 +1,12 @@
+{
+  "case_count": 1,
+  "created_at": "2026-07-30T16:36:09.1382396Z",
+  "current_pointer": "current.jsonl",
+  "dataset_hash": "c723c1e6a9b72890976d9aa17840a8f848c42408c78498b56f3437fa4871dd1e",
+  "file_sha256": "d2321274817e715a878b18cd48b7519060f4e95f583305572eea47bb483c0072",
+  "origin": "manually designed regression seed; not a real model or production failure",
+  "parent_snapshot": null,
+  "snapshot": "regression_v001.jsonl",
+  "status": "frozen",
+  "version": 1
+}

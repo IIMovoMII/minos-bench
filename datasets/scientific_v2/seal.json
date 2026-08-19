@@ -1,0 +1,10 @@
+{
+  "aggregate_content_sha256": "385c9214e9ed827d17b9ec6ddcc776ce0d6b2c3024fc1cc63f10d2024bfc1060",
+  "case_ids_sha256": "2e608662d345d7cf28fec96c08f957ef76ce733ff6697024177822412289d615",
+  "dataset_version": "scientific-v2.0",
+  "manifest_sha256": "3cd5c60f3aae6d57c2622409ad8b4946f66e80506da75a6c25e474247ee18efc",
+  "seal_version": "scientific-dataset-seal-v2",
+  "sealed_at": "2026-08-04T12:00:00Z",
+  "source_audit_sha256": "cc66017c24d0364daff1b8a5371f5cc091c34fbafe683ebde5bdc82f5eb5688b",
+  "status": "sealed"
+}

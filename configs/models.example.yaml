@@ -1,0 +1,36 @@
+version: "1.0"
+models:
+  - alias: model_a
+    role: target
+    model_env: MODEL_A_NAME
+    api_key_env: MODEL_A_API_KEY
+    base_url_env: MODEL_A_BASE_URL
+    api_mode_env: MODEL_A_API_MODE
+    reasoning_effort_env: MODEL_A_REASONING_EFFORT
+  - alias: model_b
+    role: target
+    model_env: MODEL_B_NAME
+    api_key_env: MODEL_B_API_KEY
+    base_url_env: MODEL_B_BASE_URL
+    api_mode_env: MODEL_B_API_MODE
+    reasoning_effort_env: MODEL_B_REASONING_EFFORT
+  - alias: weak_model
+    role: target
+    model_env: WEAK_MODEL_NAME
+    api_key_env: WEAK_MODEL_API_KEY
+    base_url_env: WEAK_MODEL_BASE_URL
+    api_mode_env: WEAK_MODEL_API_MODE
+    reasoning_effort_env: WEAK_MODEL_REASONING_EFFORT
+  - alias: judge
+    role: judge
+    model_env: JUDGE_MODEL_NAME
+    api_key_env: JUDGE_MODEL_API_KEY
+    base_url_env: JUDGE_MODEL_BASE_URL
+    api_mode_env: JUDGE_MODEL_API_MODE
+    reasoning_effort_env: JUDGE_MODEL_REASONING_EFFORT
+security:
+  credentials_source: windows_dpapi_profile_loaded_into_process
+  persist_api_key: encrypted_current_user
+  persist_base_url: encrypted_current_user
+  persist_endpoint_fingerprint: true
+  required_api_mode: responses

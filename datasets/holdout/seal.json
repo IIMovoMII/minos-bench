@@ -1,0 +1,8 @@
+{
+  "status": "sealed",
+  "case_count": 8,
+  "case_ids_hash": "460e014678b383bc02a501f8c23b1ed05047e2c91475bf74dbc8094350bf14f3",
+  "file_sha256": "bef5bd66cd996c7095a2f7a8b38424a663465437c43c945d529ccd0dbd21f36d",
+  "dataset_hash": "fa58d822e31604ae4aa78a00d703504768ee43007576655db150ff17bc1c41f6",
+  "sealed_at": "2026-07-30T15:56:05.410948+00:00"
+}

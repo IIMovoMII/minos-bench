@@ -1,0 +1,1 @@
+{"case_id":"RG-001","model_alias":"model_a","model_name":"fixture/not-a-real-model","prompt_id":"prompt_v1","prompt_version":"1.0","content":"{\"customer\":\"赵敏\",\"item\":\"无线鼠标\",\"quantity\":2,\"phone\":null}","tool_calls":[],"usage":{"prompt_tokens":null,"completion_tokens":null,"total_tokens":null,"cost":null,"currency":"USD"},"latency_ms":0,"fixture":true}

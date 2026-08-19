@@ -1,0 +1,130 @@
+{
+  "protocol_version": "scientific-v1.7",
+  "dataset_version": "scientific-v1.0",
+  "blind_policy_version": "scientific-target-identity-blind-v1",
+  "api_contract": {
+    "endpoint_mode": "responses",
+    "store": false,
+    "stream": false,
+    "reasoning_effort_source": "encrypted_profile_slot",
+    "reasoning_transport_policy": "provider-adapter-aware-v2",
+    "anthropic_adapter_reasoning_field": "litellm.reasoning_effort -> thinking.type=adaptive + output_config.effort",
+    "openai_compatible_adapter_reasoning_field": "reasoning.effort",
+    "anthropic_adapter_transport": "litellm_responses_to_v1_messages",
+    "anthropic_custom_base_auth": "bearer_from_encrypted_slot",
+    "provider_probe_policy": "minimal_litellm_any_nonempty_response",
+    "provider_probe_reasoning": "omitted",
+    "provider_probe_max_output_tokens": 32,
+    "judge_output_contract": "prompt_requested_json_advisory_parse",
+    "provider_timeout_ms": 300000,
+    "temperature_policy": "omitted_for_cross-provider_responses_compatibility",
+    "provider_retry_owner": "scientific_executor"
+  },
+  "prompts": [
+    {
+      "prompt_id": "prompt_v1",
+      "version": "1.0",
+      "system_prompt": "你是可靠的通用 AI 助手。严格遵守用户给出的格式、数量、范围和角色约束；涉及给定上下文时只能依据上下文，不确定或证据不足时明确说明；需要工具时选择正确工具并提供准确参数；不要编造未提供的事实。"
+    },
+    {
+      "prompt_id": "prompt_v2",
+      "version": "2.0",
+      "system_prompt": "你是可靠的通用 AI 助手。回答前先在内部检查任务目标、硬约束、可用证据、输出格式和是否需要工具，但只输出最终结果。逐项覆盖用户的明确要求；涉及给定上下文时只使用上下文中的事实，证据不足就指出缺口；结构化输出必须严格符合要求，工具调用必须核对名称、参数和顺序；禁止用常识补全未提供的信息。"
+    }
+  ],
+  "configs": [
+    {
+      "config_id": "model_a_prompt_v1",
+      "target_slot": "model_a",
+      "prompt_id": "prompt_v1",
+      "prompt_version": "1.0"
+    },
+    {
+      "config_id": "model_b_prompt_v1",
+      "target_slot": "model_b",
+      "prompt_id": "prompt_v1",
+      "prompt_version": "1.0"
+    },
+    {
+      "config_id": "weak_prompt_v1",
+      "target_slot": "weak_model",
+      "prompt_id": "prompt_v1",
+      "prompt_version": "1.0"
+    },
+    {
+      "config_id": "weak_prompt_v2",
+      "target_slot": "weak_model",
+      "prompt_id": "prompt_v2",
+      "prompt_version": "2.0"
+    }
+  ],
+  "runtime_slots": {
+    "model_a": {
+      "role": "target",
+      "model_env": "MODEL_A_NAME",
+      "api_key_env": "MODEL_A_API_KEY",
+      "base_url_env": "MODEL_A_BASE_URL",
+      "api_mode_env": "MODEL_A_API_MODE",
+      "reasoning_effort_env": "MODEL_A_REASONING_EFFORT"
+    },
+    "model_b": {
+      "role": "target",
+      "model_env": "MODEL_B_NAME",
+      "api_key_env": "MODEL_B_API_KEY",
+      "base_url_env": "MODEL_B_BASE_URL",
+      "api_mode_env": "MODEL_B_API_MODE",
+      "reasoning_effort_env": "MODEL_B_REASONING_EFFORT"
+    },
+    "weak_model": {
+      "role": "target",
+      "model_env": "WEAK_MODEL_NAME",
+      "api_key_env": "WEAK_MODEL_API_KEY",
+      "base_url_env": "WEAK_MODEL_BASE_URL",
+      "api_mode_env": "WEAK_MODEL_API_MODE",
+      "reasoning_effort_env": "WEAK_MODEL_REASONING_EFFORT"
+    },
+    "judge": {
+      "role": "judge",
+      "model_env": "JUDGE_MODEL_NAME",
+      "api_key_env": "JUDGE_MODEL_API_KEY",
+      "base_url_env": "JUDGE_MODEL_BASE_URL",
+      "api_mode_env": "JUDGE_MODEL_API_MODE",
+      "reasoning_effort_env": "JUDGE_MODEL_REASONING_EFFORT"
+    }
+  },
+  "target_generation": {
+    "max_output_tokens": 1600,
+    "requests_per_config_case": 1,
+    "quality_triggered_regeneration": false
+  },
+  "judge": {
+    "slot": "judge",
+    "protocol_version": "atomic-judge-v1",
+    "max_output_tokens": 4000,
+    "requests_per_answer": 1,
+    "second_judge": false,
+    "contract_error_policy": "record_runtime_error_and_continue",
+    "severity_visible_to_judge": false,
+    "target_identity_visible_to_judge": false
+  },
+  "matrix": {
+    "judge_validation_requests": 14,
+    "formal_cases": 25,
+    "configurations": 4,
+    "formal_target_requests": 100,
+    "formal_judge_requests": 100,
+    "judge_repetitions": 1
+  },
+  "stop_rules": {
+    "hard_provider_error_first_occurrence": true,
+    "deterministic_model_route_error_first_occurrence": true,
+    "transient_failure_retry_policy": "unbounded_until_success",
+    "global_transient_diagnostic_retry_cap": null,
+    "repeat_successful_provider_probe": false,
+    "judge_validation_contract_error": "advisory_continue",
+    "formal_judge_contract_error": "advisory_continue",
+    "max_consecutive_runtime_errors": 3,
+    "quality_failure_causes_retry": false,
+    "automatic_new_execution": false
+  }
+}

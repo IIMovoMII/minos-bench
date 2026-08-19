@@ -1,0 +1,61 @@
+{
+  "counts": {
+    "all_questions": 37,
+    "judge_validation_families": 7,
+    "judge_validation_responses": 14,
+    "regression": 1,
+    "rule_development": 3,
+    "target_comparison": 24,
+    "technical_probes": 2
+  },
+  "created_at": "2026-08-04T12:00:00Z",
+  "data_use_distribution": {
+    "judge_validation": 7,
+    "regression": 1,
+    "rule_development": 3,
+    "target_comparison": 24,
+    "technical_probes": 2
+  },
+  "dataset_version": "scientific-v2.0",
+  "difficulty_distribution": {
+    "D2": 12,
+    "D3": 12
+  },
+  "excluded_source_types": [
+    "synthetic_draft"
+  ],
+  "file_sha256": {
+    "judge_validation_cases.jsonl": "684e3c1bcb49578de46fee8cf20c766f980f7c1fcd3c27e21fa0ad40eaaf9655",
+    "judge_validation_responses.jsonl": "4e842f575f4e0a221bdbd7f8f7375c19618ca2047ddd1f1c56ad8c4a9f7c07c1",
+    "regression.jsonl": "3e3af0a7037be1b7dd486061652901997628b5faf66772b556a0d1f3b786c0f1",
+    "rule_development.jsonl": "8a7a33276b987039499835f5c31a3fe14d8b54d3de55d5061b936f26d0aaa2a5",
+    "source_ledger.jsonl": "6a2674812bad18f54f4e72d4de5c5f8dcd3bbb784e0f88e1b1572c2d81da3f28",
+    "target_comparison.jsonl": "0d9ccdabff5454fba726c3b98ffadbdef78527ddb782a4bce895d1f326cdb6e9",
+    "technical_probes.jsonl": "411bacb2cdaa3e081903fa53d678c62d33d9c5ee420da9d18402d921b736d8a4"
+  },
+  "risk_cell_distribution": {
+    "gq.answerability_refusal": 2,
+    "gq.negative_conflict_citation": 2,
+    "gq.structured_multistep_evidence": 2,
+    "ig.cross_turn_long_context": 2,
+    "ig.ood_multi_constraint": 2,
+    "ig.priority_negation_prohibition": 2,
+    "mt.implicit_memory": 2,
+    "mt.instruction_retention": 2,
+    "mt.version_editing_self_coherence": 2,
+    "st.canonicalization_insufficient_info": 2,
+    "st.side_effect_final_state_untrusted_output": 2,
+    "st.state_dependency": 2
+  },
+  "schema_module": "llm_eval_workbench.scientific_schemas",
+  "schema_version": "scientific-dataset-v2",
+  "source_audit_path": "research/PROJECT3_BENCHMARK_SOURCE_AUDIT_20260802.md",
+  "source_audit_sha256": "cc66017c24d0364daff1b8a5371f5cc091c34fbafe683ebde5bdc82f5eb5688b",
+  "source_audit_version": "2026-08-04",
+  "task_pack_distribution": {
+    "grounded_qa": 6,
+    "instruction_generation": 6,
+    "multi_turn": 6,
+    "structured_tool": 6
+  }
+}

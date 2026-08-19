@@ -1,0 +1,43 @@
+{
+  "counts": {
+    "all_questions": 38,
+    "judge_validation_families": 7,
+    "judge_validation_responses": 14,
+    "regression": 1,
+    "rule_development": 3,
+    "target_comparison": 25,
+    "technical_probes": 2
+  },
+  "created_at": "2026-08-02T00:00:00Z",
+  "data_use_distribution": {
+    "judge_validation": 7,
+    "regression": 1,
+    "rule_development": 3,
+    "target_comparison": 25,
+    "technical_probes": 2
+  },
+  "dataset_version": "scientific-v1.0",
+  "excluded_source_types": [
+    "synthetic_draft"
+  ],
+  "file_sha256": {
+    "judge_validation_cases.jsonl": "4f2cccdbf95810d57be155ad5b7b465523df3b8a96c77f4ed9e01580940e0776",
+    "judge_validation_responses.jsonl": "4e842f575f4e0a221bdbd7f8f7375c19618ca2047ddd1f1c56ad8c4a9f7c07c1",
+    "regression.jsonl": "6bb0a2d0ba0fcff672711579af63db117cc390389858a270647739df0335be2f",
+    "rule_development.jsonl": "8c0c93e36f2767736d1f1f96b4920cee794dbac81e651be2eb670387646dc289",
+    "source_ledger.jsonl": "51eca001c9f1ee4f8577d7bbb37b0980237e4f8e48cb7b9c915f9214933ccd3a",
+    "target_comparison.jsonl": "94eae5e1396f443c337fd68eb4f318aba566312f8c19df3028308c8ed062c3ff",
+    "technical_probes.jsonl": "780076ffc59e1cc2f27ce7154578e5f8a88dfc3093646d3c7bce86f7f2fc44c1"
+  },
+  "schema_module": "llm_eval_workbench.scientific_schemas",
+  "schema_version": "scientific-dataset-v1",
+  "source_audit_path": "research/PROJECT3_BENCHMARK_SOURCE_AUDIT_20260802.md",
+  "source_audit_sha256": "d443746b36911dd9e9a136d97734c625a66ce1325d9ade945bfab1d22eb03b79",
+  "source_audit_version": "2026-08-02",
+  "task_pack_distribution": {
+    "grounded_qa": 7,
+    "instruction_generation": 6,
+    "multi_turn": 5,
+    "structured_tool": 7
+  }
+}

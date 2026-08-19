@@ -1,0 +1,4 @@
+{"case_id":"IG-001","model_alias":"model_a","model_name":"fixture/not-a-real-model","prompt_id":"prompt_v1","prompt_version":"1.0","content":"1. 提前确认报到地点和所需材料。\n2. 主动认识直属同事并了解分工。\n3. 记录当天流程、问题和后续待办。","tool_calls":[],"usage":{},"fixture":true}
+{"case_id":"GQ-003","model_alias":"model_a","model_name":"fixture/not-a-real-model","prompt_id":"prompt_v1","prompt_version":"1.0","content":"给定资料未说明整机保修期，因此无法确定；需要补充该型号的正式保修政策。","tool_calls":[],"usage":{},"fixture":true}
+{"case_id":"MT-001","model_alias":"model_a","model_name":"fixture/not-a-real-model","prompt_id":"prompt_v1","prompt_version":"1.0","content":"最终采购方案按总预算不超过4000元执行。","tool_calls":[],"usage":{},"fixture":true}
+{"case_id":"ST-001","model_alias":"model_a","model_name":"fixture/not-a-real-model","prompt_id":"prompt_v1","prompt_version":"1.0","content":"{\"order_id\":\"A-104\",\"customer\":\"林岚\",\"item\":\"蓝色水杯\",\"quantity\":2,\"total_cny\":96}","tool_calls":[],"usage":{},"fixture":true}
