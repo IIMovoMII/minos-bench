@@ -163,3 +163,12 @@ Project 3 已新增 Windows 一键启动和页面内模型配置，但尚未发�
 - 首次公开提交沿用精确允许列表：源码、测试、冻结数据、中文项目文档和一份身份盲机器最终报告可以进入 Git；本地 DPAPI profile、真实 Key/完整 URL、`.env*`、Streamlit secrets、原始逐题执行、缓存和本机环境保持排除。
 - 仓库发布只改变品牌、公开说明和 Git 交付状态，没有修改 Scientific v2 的题目、Judge、结果或面试数字，也没有运行真实模型。
 - 公开后可以如实说明“项目已在 GitHub 以 MIT License 开源”；仍不能声称生产部署、真实业务数据、官方 Benchmark 成绩或候选人独立手写全部代码。
+
+## 十、2026-08-20 公开首页重构与安全复核
+
+- GitHub README 已删除“当前状态”和“真实性与分工”两段，改为面向使用者的中文项目首页：核心能力、快速开始、工作方式、内置题集、评分门禁、示例报告、常用命令、页面、项目结构、安全、文档与贡献。长篇版本史和内部过程继续保留在 `docs/`，不再占用首页。
+- README 重构提交为 `2eaf075`；随后发现 GitHub Dependabot 对锁文件报告 7 条开放告警，其中 6 条来自 GitPython 3.1.57、1 条来自 pytest 8.4.2。
+- 锁文件已升级到 GitPython 3.1.59 和 pytest 9.1.1，均高于 GitHub 给出的首个修复版本；120 项离线测试在清空旧 pytest 缓存后全部通过，退出码为 0。修复提交为 `f9b7df0`，GitHub 重新计算后的开放 Dependabot 告警为 0。
+- 本地 Git 根目录核对为 `projects/project3_llm_evaluation`。本地索引与远端 `main` 各有 152 个文件且路径集合完全一致；未发现 Project 1/2、根求职文档、个人简历或禁止目录路径。
+- 暂存候选审计和完整 152 文件索引审计均为 0 个发现；全部 Git 历史未命中高置信 API Key、Token、私钥、私有绝对路径或跨项目引用。远端 Secret Scanning 与 Push Protection 均为 enabled，开放 Secret Scanning 告警为 0。
+- 本轮没有运行真实模型、读取模型 profile 或输出任何凭据；只进行了 README/依赖/状态文档修改、依赖解析、离线测试和 GitHub 安全元数据核验。

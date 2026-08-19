@@ -103,3 +103,11 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\start_ui.ps1
 ## 8. 后续优化优先级
 
 公开版本仍优先保持轻量、本地和可复核。后续可按需要增加离线 CI；不要为了展示效果直接增加 Docker、公网部署、数据库或生产可观测平台，它们会扩大密钥和多租户风险，也不属于当前 POC 的已验收范围。
+
+## 9. 2026-08-20 发布后安全复核
+
+- README 已改为面向开源使用者的中文首页，“当前状态”和“真实性与分工”不再出现在 README；版本史、失败审计和边界证据继续由本文件及项目状态文档承载。
+- 本地独立仓库与 GitHub `main` 均包含 152 个文件，路径集合完全一致；仓库根目录就是 Project 3，没有 Project 1/2、求职工作区文档或个人简历进入远端。
+- 仓库自带暂存审计、完整 Git 索引审计、全部历史高置信凭据特征检查和 GitHub Secret Scanning 均未发现凭据；Push Protection 保持启用，开放 Secret Scanning 告警为 0。
+- GitHub 首次复核发现锁文件中 GitPython 3.1.57 与 pytest 8.4.2 对应 7 条 Dependabot 告警。现已分别升级到 3.1.59 与 9.1.1；120 项离线测试通过，GitHub 重新计算后的开放 Dependabot 告警为 0。
+- README 提交为 `2eaf075`，依赖安全修复提交为 `f9b7df0`。本次复核没有运行真实 Provider 请求，也没有把本机 profile、Key 或完整 Base URL 加入 Git。
