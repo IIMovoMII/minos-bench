@@ -1283,6 +1283,7 @@ elif page == "可选人工抽检":
         "fact_check",
     )
     execution_roots = [
+        ("V3", PROJECT_ROOT / "artifacts" / "scientific_v3" / "executions"),
         ("V2", PROJECT_ROOT / "artifacts" / "scientific_v2" / "executions"),
         ("V1", PROJECT_ROOT / "artifacts" / "scientific_v1" / "executions"),
     ]

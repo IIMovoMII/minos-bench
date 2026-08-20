@@ -5,8 +5,11 @@ import time
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+from jsonschema import Draft202012Validator
+
 from .hashing import sha256_value
 from .model_gateway import (
+    _merge_usage,
     _parse_tool_calls,
     _response_completion,
     _response_output_text,
@@ -57,26 +60,139 @@ def build_scientific_responses_input(
     return system_prompt, input_items
 
 
+def _resolve_simulation_value(value: Any, arguments: dict[str, Any]) -> Any:
+    if isinstance(value, str) and value.startswith("$arguments."):
+        return arguments.get(value.removeprefix("$arguments."))
+    if isinstance(value, dict):
+        return {
+            key: _resolve_simulation_value(item, arguments)
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [_resolve_simulation_value(item, arguments) for item in value]
+    return value
+
+
+def _tool_definition(case: ScientificCase, name: str) -> dict[str, Any] | None:
+    return next(
+        (item for item in case.available_tools if str(item.get("name")) == name),
+        None,
+    )
+
+
+def execute_simulated_tool_call(
+    case: ScientificCase,
+    call: Any,
+    state: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Execute one local synthetic tool without touching an external system."""
+
+    definition = _tool_definition(case, call.name)
+    if definition is None:
+        return (
+            {
+                "ok": False,
+                "error": "unknown_tool",
+                "tool": call.name,
+            },
+            dict(state),
+        )
+
+    schema = definition.get("parameters", {})
+    validation_errors = sorted(
+        Draft202012Validator(schema).iter_errors(call.arguments),
+        key=lambda item: list(item.absolute_path),
+    )
+    if validation_errors:
+        return (
+            {
+                "ok": False,
+                "error": "invalid_arguments",
+                "details": [item.message for item in validation_errors],
+            },
+            dict(state),
+        )
+
+    simulation = next(
+        (
+            item
+            for item in case.tool_outputs
+            if item.get("simulation") is True
+            and str(item.get("name")) == call.name
+        ),
+        None,
+    )
+    if simulation is None:
+        return (
+            {
+                "ok": False,
+                "error": "simulation_unavailable",
+                "tool": call.name,
+            },
+            dict(state),
+        )
+
+    required_arguments = simulation.get("requires_arguments", {})
+    unmet_arguments = {
+        key: {"expected": expected, "actual": call.arguments.get(key)}
+        for key, expected in required_arguments.items()
+        if call.arguments.get(key) != expected
+    }
+    if unmet_arguments:
+        return (
+            {
+                "ok": False,
+                "error": "argument_precondition_failed",
+                "unmet": unmet_arguments,
+            },
+            dict(state),
+        )
+
+    required_state = _resolve_simulation_value(
+        simulation.get("requires_state", {}),
+        call.arguments,
+    )
+    unmet = {
+        key: {"expected": expected, "actual": state.get(key)}
+        for key, expected in required_state.items()
+        if state.get(key) != expected
+    }
+    if unmet:
+        return (
+            {
+                "ok": False,
+                "error": "precondition_failed",
+                "unmet": unmet,
+            },
+            dict(state),
+        )
+
+    updated = dict(state)
+    patch = _resolve_simulation_value(
+        simulation.get("state_patch", {}),
+        call.arguments,
+    )
+    updated.update(patch)
+    declared_output = simulation.get("output")
+    result = (
+        _resolve_simulation_value(declared_output, call.arguments)
+        if declared_output is not None
+        else {"ok": True, "state_patch": patch}
+    )
+    if not isinstance(result, dict):
+        result = {"ok": True, "value": result}
+    elif "ok" not in result:
+        result = {"ok": True, **result}
+    return result, updated
+
+
 def simulate_environment_state(
     case: ScientificCase,
     tool_calls: list[Any],
 ) -> dict[str, Any]:
     state: dict[str, Any] = {}
-    simulations = {
-        str(item.get("name")): item
-        for item in case.tool_outputs
-        if item.get("simulation") is True
-    }
-    for call in tool_calls:
-        simulation = simulations.get(call.name)
-        if simulation is None:
-            continue
-        patch = simulation.get("state_patch", {})
-        for key, value in patch.items():
-            if isinstance(value, str) and value.startswith("$arguments."):
-                state[key] = call.arguments.get(value.removeprefix("$arguments."))
-            else:
-                state[key] = value
+    for call in sorted(tool_calls, key=lambda item: item.order):
+        _, state = execute_simulated_tool_call(case, call, state)
     return state
 
 
@@ -148,51 +264,138 @@ class ScientificTargetGateway:
         )
         started = time.perf_counter()
         response = None
-        content = ""
+        content_parts: list[str] = []
         tool_calls: list[Any] = []
+        tool_trace: list[dict[str, Any]] = []
+        environment_state: dict[str, Any] = {}
+        usage = None
         provider_status: str | None = None
         incomplete_reason: str | None = None
         request_count = 0
-        # A provider can return HTTP 200 with an empty or incomplete payload. It
-        # is a transport/runtime failure, not a content-quality result, so allow
-        # exactly one diagnostic retry here. A non-empty answer exits this loop,
-        # even if its content is later judged wrong.
-        for attempt in range(2):
-            request_count += 1
-            response = await self._responses(
-                **self.request_kwargs(
-                    instructions=instructions,
-                    input_items=input_items,
-                    tools=case.available_tools or None,
-                )
-            )
-            content = _response_output_text(response)
-            tool_calls = _parse_tool_calls(response)
-            complete, provider_status, incomplete_reason = _response_completion(
-                response,
-                content=content,
-                tool_calls=tool_calls,
-            )
-            if complete and (content.strip() or tool_calls):
-                break
-            if attempt == 1:
-                if not complete:
-                    raise RuntimeError(
-                        "IncompleteTargetResponse "
-                        f"(status={provider_status or 'missing'}, "
-                        f"reason={incomplete_reason or 'unknown'})"
+        model_turns = 0
+        for model_turn in range(case.max_agent_turns):
+            model_turns += 1
+            round_content = ""
+            round_calls: list[Any] = []
+            # A completed empty payload is a transport failure. Retry only that
+            # model turn once; never retry a non-empty answer for quality.
+            for attempt in range(2):
+                request_count += 1
+                response = await self._responses(
+                    **self.request_kwargs(
+                        instructions=instructions,
+                        input_items=input_items,
+                        tools=case.available_tools or None,
                     )
-                raise EmptyProviderResponse(
-                    "target response contained no text or tool call"
                 )
+                round_content = _response_output_text(response)
+                round_calls = _parse_tool_calls(response)
+                complete, provider_status, incomplete_reason = _response_completion(
+                    response,
+                    content=round_content,
+                    tool_calls=round_calls,
+                )
+                if complete and (round_content.strip() or round_calls):
+                    break
+                if attempt == 1:
+                    if not complete:
+                        raise RuntimeError(
+                            "IncompleteTargetResponse "
+                            f"(status={provider_status or 'missing'}, "
+                            f"reason={incomplete_reason or 'unknown'})"
+                        )
+                    raise EmptyProviderResponse(
+                        "target response contained no text or tool call"
+                    )
+
+            round_usage = _usage_from_response(response)
+            usage = round_usage if usage is None else _merge_usage(usage, round_usage)
+            if round_content.strip():
+                content_parts.append(round_content)
+            if not round_calls:
+                break
+
+            state_before_round = dict(environment_state)
+            normalized_calls = []
+            results = []
+            for round_order, call in enumerate(round_calls):
+                global_order = len(tool_calls)
+                normalized = call.model_copy(
+                    update={
+                        "call_id": call.call_id
+                        or (
+                            f"{case.case_id}-turn-{model_turn + 1}"
+                            f"-call-{round_order + 1}"
+                        ),
+                        "order": global_order,
+                    }
+                )
+                result, updated = execute_simulated_tool_call(
+                    case,
+                    normalized,
+                    state_before_round,
+                )
+                if result.get("ok") is True:
+                    environment_state.update(updated)
+                normalized_calls.append(normalized)
+                results.append((normalized, result))
+                tool_trace.append(
+                    {
+                        "model_turn": model_turn + 1,
+                        "call": normalized.model_dump(mode="json"),
+                        "result": result,
+                        "state_before": state_before_round,
+                        "state_after": dict(environment_state),
+                    }
+                )
+            tool_calls.extend(normalized_calls)
+
+            if model_turn + 1 >= case.max_agent_turns:
+                break
+            prior_items = response_items(response)
+            if prior_items:
+                normalized_iterator = iter(normalized_calls)
+                normalized_prior_items = []
+                for item in prior_items:
+                    if item.get("type") == "function_call":
+                        normalized_call = next(normalized_iterator, None)
+                        if normalized_call is not None:
+                            item = {
+                                **item,
+                                "call_id": normalized_call.call_id,
+                                "name": normalized_call.name,
+                                "arguments": json.dumps(
+                                    normalized_call.arguments,
+                                    ensure_ascii=False,
+                                ),
+                            }
+                    normalized_prior_items.append(item)
+                prior_items = normalized_prior_items
+            if not prior_items:
+                prior_items = [
+                    {
+                        "type": "function_call",
+                        "call_id": call.call_id,
+                        "name": call.name,
+                        "arguments": json.dumps(call.arguments, ensure_ascii=False),
+                    }
+                    for call in normalized_calls
+                ]
+            input_items = [*input_items, *prior_items]
+            input_items.extend(
+                tool_output_item(str(call.call_id), result)
+                for call, result in results
+            )
         latency_ms = int((time.perf_counter() - started) * 1000)
-        environment_state = simulate_environment_state(case, tool_calls)
+        content = "\n".join(content_parts)
         return ScientificOutput(
             case_id=case.case_id,
             content=content,
             tool_calls=tool_calls,
             environment_state=environment_state,
-            usage=_usage_from_response(response),
+            tool_trace=tool_trace,
+            model_turns=model_turns,
+            usage=usage or _usage_from_response(response),
             latency_ms=latency_ms,
             request_count=request_count,
             provider_status=provider_status,

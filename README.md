@@ -17,6 +17,7 @@
 | 可解释评分 | 每条 Rubric 单独返回 PASS、FAIL 或 ABSTAIN，并保留证据、原因和严重程度 |
 | 严重错误门禁 | critical 错误独立阻断发布，不会被较高平均分抵消 |
 | 可恢复执行 | 固定执行图、幂等重进和追加式恢复只补运行失败节点，不重复已成功调用 |
+| 真实工具循环 | 多步 Agent 按“模型 → 工具 → 结果回传 → 模型”推进，并保存逐轮 trace 与最终环境状态 |
 | 运行与质量分离 | 超时、空响应、接口错误不会伪装成内容 0 分；回答答错也不会重生成到通过 |
 | 匿名比较 | Judge 与可选人工复核看不到目标模型、Prompt 和配置身份 |
 | 中文可视化工作台 | 七个页面覆盖模型配置、数据来源、运行评测、结果比较、单题复核和人工抽检 |
@@ -42,7 +43,7 @@ cd minos-bench
 | 模式 | 需要配置 | 用途 |
 |---|---|---|
 | 快速体验 | 1 个被测模型 + 1 个 Judge | 验证完整链路；三个目标槽位相同，不用于模型比较 |
-| 完整四槽 | 候选模型 A、候选模型 B、弱基线、Judge | 验证四配置执行链；可信比较需另行使用通过有效性门禁的新题集 |
+| 完整四槽 | 候选模型 A、候选模型 B、弱基线、Judge | 在已冻结的 Scientific v3.0 上执行四配置控制比较 |
 
 Key 与完整 Base URL 不会写入仓库。Windows 持久化配置使用当前用户 DPAPI，并保存在项目目录之外。
 
@@ -86,7 +87,15 @@ flowchart LR
 
 每个题目都登记来源、风险格、难度、允许证据、直接检查、语义 Rubric、正反例和严重程度。题型方法来自公开评测研究，具体场景由本项目重新编写。
 
-2026-08-20 逐题复审确认：现有台账主要证明“参考了什么方法”，尚未逐题证明业务改写与官方任务、官方成功条件和官方评分器等价；部分直接检查与 Judge 还会误杀千分位、否定句、同义表达和无关格式。因此这 24 题现只用于展示执行、恢复、审计和评分失败复盘，**不再用于可信的模型能力比较**。完整题面见 [`FORMAL_BENCHMARK_BACKED_QUESTION_SET_V2.md`](docs/FORMAL_BENCHMARK_BACKED_QUESTION_SET_V2.md)，复审结论见 [`SCIENTIFIC_V2_VALIDITY_REAUDIT_20260820.md`](docs/SCIENTIFIC_V2_VALIDITY_REAUDIT_20260820.md)。
+2026-08-20 逐题复审确认：现有台账主要证明“参考了什么方法”，尚未逐题证明业务改写与官方任务、官方成功条件和官方评分器等价；部分直接检查与 Judge 还会误杀千分位、否定句、同义表达和无关格式。因此这 24 题现只用于展示执行、恢复、审计和评分失败复盘，**不再用于可信的模型能力比较**。完整题面见 [`FORMAL_BENCHMARK_BACKED_QUESTION_SET_V2.md`](docs/FORMAL_BENCHMARK_BACKED_QUESTION_SET_V2.md)，复审结论见 [`SCIENTIFIC_V2_VALIDITY_REAUDIT_20260820.md`](docs/SCIENTIFIC_V2_VALIDITY_REAUDIT_20260820.md)，全部历史输出的逐题源证据裁决见 [`SCIENTIFIC_V2_SOURCE_ADJUDICATION_20260820.md`](docs/SCIENTIFIC_V2_SOURCE_ADJUDICATION_20260820.md)。
+
+## Scientific v3.0 冻结题集
+
+当前默认数据位于 `datasets/scientific_v3/`。它保留 24 题分层，但每题新增具体来源任务或方法、原项目成功定义、原检查器、保留不变量、表层改写和许可证用法。它不是把公开原题翻译成中文：允许改编的来源保留具体 ID 与署名；许可证未声明或仅限非商业使用的来源只迁移方法，业务题面、数字、实体和 Gold 均重新编写。
+
+v3.0 修复了旧版的决定性问题：`CMP-GQ-22` 增加结算日期；`CMP-ST-21` 与 `CMP-ST-22` 改为真实的两轮/三轮工具观察；viewer 不再能伪造 auditor 状态，跨订单状态也不能复用；Judge 不再接收 Gold、反例或模拟器内部答案，普通语义题也不再因无关格式、千分位或否定句失败。
+
+24/24 Gold 已通过直接检查和 Codex 源证据裁决；20 个登记反例由代码检查命中，4 个刻意保留为“字面合法、业务语义错误”的语义反例。manifest、seal、等价改写、工具状态和旧版本兼容门禁已离线通过。v3.0 已替换 CLI 默认数据，但尚未运行真实模型矩阵，因此没有 v3 分数、排名或准确率。完整题目见 [`FORMAL_BENCHMARK_BACKED_QUESTION_SET_V3.md`](docs/FORMAL_BENCHMARK_BACKED_QUESTION_SET_V3.md)，来源与许可证见 [`SCIENTIFIC_V3_SOURCE_AUDIT_20260820.md`](docs/SCIENTIFIC_V3_SOURCE_AUDIT_20260820.md)。
 
 ## 评分与发布门禁
 
@@ -110,6 +119,8 @@ flowchart LR
 
 这份报告包含 24 道题 × 4 个配置产生的 96 份目标输出，以及 96 份合法 Judge 结果。200/200 节点、96/96 输出、96/96 合法 Judge 和 0 运行错误仍是工程事实；表中分数、排序、`critical` 计数和判断覆盖率不能作为模型能力、准确率或发布结论。
 
+零 Provider 的 Codex 源证据裁决将其中 12 份标记为题面或 runner 无效；剩余 84 份中 82 份通过、2 份失败。这个数量用于说明评分器和执行器如何被审计，不能换算成新准确率或配置排名。
+
 [查看身份盲机器报告](artifacts/scientific_v2/executions/scientific-v2-20260804-a-recovery-4/machine_final_report.json)
 
 ## 常用命令
@@ -129,9 +140,19 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass `
 .\scripts\run_cli.ps1 scientific-validate
 ```
 
-### 运行有限真实矩阵
+### Scientific v3.0 有限矩阵
 
-真实运行需要先在本机配置完整四槽，并提供新的执行编号：
+完成本地模型配置后，使用新的执行编号启动冻结矩阵。每个配置和题目只保存一个目标输出；ST-21/ST-22 内部会按预登记上限进行多轮工具调用。只有空响应或 API 运行失败可以恢复，已有非空错误答案不会重跑：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass `
+  -File .\scripts\run_scientific_v3.ps1 `
+  -ExecutionId scientific-v3-YYYYMMDD-a
+```
+
+### 历史 v2 运行入口
+
+下列命令只用于复现已撤回比较效力的 v2 执行合同，不应用来生成新的模型排名：
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass `
@@ -140,6 +161,13 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass `
 ```
 
 执行顺序固定为：离线门禁 → Provider 健康探针 → 目标生成 → 原子 Judge → 机器报告与匿名包。详细恢复规则和协议说明见[执行文档](docs/EXECUTION_HANDOFF_V1_20260802.md)。
+
+可用下面的零 Provider 命令确定性重建冻结数据和人类可读题集：
+
+```powershell
+$env:PYTHONPATH = (Join-Path (Get-Location) 'src')
+uv run --no-sync python .\scripts\build_scientific_v3_candidate.py --final
+```
 
 ## 工作台页面
 
@@ -158,6 +186,8 @@ minos-bench/
 ├─ app.py                         # Streamlit 中文工作台
 ├─ configs/                       # 评测配置与冻结执行合同
 ├─ datasets/scientific_v2/        # 历史题集、来源台账、manifest 与 seal
+├─ datasets/scientific_v3/        # 当前默认冻结题集、来源台账、manifest 与 seal
+├─ datasets/scientific_v3_candidate/ # 冻结前候选构建记录，不承载在线结果
 ├─ src/llm_eval_workbench/        # 执行、核验、Judge、恢复与报告
 ├─ scripts/                       # 一键启动、验收、矩阵与安全审计
 ├─ tests/                         # 离线测试
@@ -171,7 +201,7 @@ minos-bench/
 - `.env*`、Streamlit secrets、证书、DPAPI 文件、日志、数据库和原始运行工件默认由 `.gitignore` 排除。
 - UI 不回显 Key 与完整 Base URL；模型配置通过标准输入交给本地保存脚本。
 - 默认服务只绑定 `127.0.0.1`，不提供公网多租户密钥托管。
-- 目标 Provider 会收到对应题目输入；Judge 只收到题目证据、匿名回答和预登记语义项。
+- 目标 Provider 会收到对应题目输入；Judge 只收到题目证据、匿名回答、工具 trace 和预登记语义项，不接收 Gold 或反例。
 
 提交前先建立暂存候选，再运行脱敏审计。审计器只报告规则名、路径和行号，不显示命中的原文：
 
@@ -189,6 +219,8 @@ uv run --no-sync python .\scripts\audit_public_commit.py
 | [一键启动与公开边界](docs/PUBLIC_RELEASE_AND_ONE_CLICK_20260819.md) | 环境、页面配置、DPAPI 与 Git 允许列表 |
 | [Scientific v2 历史题集](docs/FORMAL_BENCHMARK_BACKED_QUESTION_SET_V2.md) | 24 道题、风险格、gold、反例与检查边界；当前不承担模型比较 |
 | [Scientific v2 有效性复审](docs/SCIENTIFIC_V2_VALIDITY_REAUDIT_20260820.md) | 评分误杀、分数撤回、逐题来源门禁与零 Provider 重建顺序 |
+| [Scientific v3.0 正式题集](docs/FORMAL_BENCHMARK_BACKED_QUESTION_SET_V3.md) | 24 道完整题面、上下文、Gold、反例、直接检查、原子 Rubric 与来源锚点 |
+| [Scientific v3 来源审计](docs/SCIENTIFIC_V3_SOURCE_AUDIT_20260820.md) | 官方任务、成功定义、检查器、许可证和 24 题逐题映射 |
 | [科学评测实施方案](docs/SCIENTIFIC_EVALUATION_IMPLEMENTATION_PLAN_V3_APPROVED.md) | 产品原则、判断权限、执行矩阵和验收合同 |
 | [有限执行与恢复](docs/EXECUTION_HANDOFF_V1_20260802.md) | 单次 Judge、重试、幂等恢复和停止条件 |
 | [安全说明](SECURITY.md) | 凭据隔离、误提交处置和部署边界 |

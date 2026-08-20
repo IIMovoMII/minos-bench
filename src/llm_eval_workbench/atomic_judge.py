@@ -88,8 +88,6 @@ def build_atomic_judge_payload(
             "fail_condition": item.fail_condition,
             "abstain_condition": item.abstain_condition,
             "not_applicable_condition": item.not_applicable_condition,
-            "positive_example": item.positive_example,
-            "negative_example": item.negative_example,
         }
         for item in case.semantic_criteria
     ]
@@ -101,19 +99,6 @@ def build_atomic_judge_payload(
             "context": case.context,
             "turns": [turn.model_dump(mode="json") for turn in case.turns],
             "available_tools": case.available_tools,
-            "tool_outputs": case.tool_outputs,
-            "expected_behavior": case.expected_behavior,
-            "gold_answer": case.gold_answer,
-            "gold_tool_calls": [
-                call.model_dump(mode="json", exclude_none=True)
-                for call in case.gold_tool_calls
-            ],
-            "gold_environment_state": case.gold_environment_state,
-            "counterexample": case.counterexample,
-            "counterexample_tool_calls": [
-                call.model_dump(mode="json", exclude_none=True)
-                for call in case.counterexample_tool_calls
-            ],
             "checker_boundary": case.checker_boundary,
         },
         "candidate_answer": {
@@ -123,6 +108,7 @@ def build_atomic_judge_payload(
                 for call in output.tool_calls
             ],
             "environment_state": output.environment_state,
+            "tool_trace": output.tool_trace,
         },
         "criteria": criteria,
         "required_output_contract": {
@@ -148,8 +134,17 @@ def atomic_judge_instructions(*, contract_retry: bool = False) -> str:
         "Evaluate every registered semantic criterion exactly once and do not add, "
         "merge, rename, or omit criteria. Judge one behavior per criterion. Use only "
         "the supplied case evidence and candidate answer; external knowledge is not "
-        "allowed. A citation marker is not proof that the cited source supports the "
-        "claim. If an applicable criterion lacks enough evidence, return ABSTAIN with "
+        "allowed. Evaluate only the semantic behavior named by the current criterion. "
+        "Accept equivalent paraphrases that preserve the facts and business meaning. "
+        "Unless the criterion explicitly evaluates format, punctuation, ordering, or "
+        "exact wording, ignore those surface differences. Examples and reference-like "
+        "phrasing, if present in criterion text, are illustrative and non-exhaustive; "
+        "they are not the only valid answer. Do not duplicate mechanical conditions "
+        "assigned to DIRECT_VERIFIER. A citation marker is not proof that the cited "
+        "source supports the claim. Return FAIL only for a material contradiction, "
+        "key omission, or unauthorized action that is covered by the criterion, and "
+        "identify the answer evidence and impact in the reason. If an applicable "
+        "criterion lacks enough evidence, return ABSTAIN with "
         "INSUFFICIENT. If it is not applicable, return NOT_APPLICABLE and ABSTAIN. "
         "Do not output severity, model identity, prompt identity, scores, confidence, "
         "new dimensions, or a final release recommendation. Output must be exactly "

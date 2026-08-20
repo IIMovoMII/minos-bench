@@ -4,12 +4,16 @@ param(
     [ValidatePattern('^[A-Za-z0-9][A-Za-z0-9._-]{4,100}$')]
     [string]$ExecutionId,
 
-    [int]$MaxRecoveryRounds = 5
+    [int]$MaxRecoveryRounds = 5,
+
+    [ValidateSet("v2", "v3")]
+    [string]$ScientificVersion = "v2"
 )
 
 $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $projectRoot
+$env:LLM_EVAL_SCIENTIFIC_VERSION = $ScientificVersion
 
 if (-not (Test-Path -LiteralPath ".venv\Scripts\python.exe")) {
     & (Join-Path $PSScriptRoot "setup.ps1")
@@ -26,7 +30,7 @@ Import-LlmEvalProfileToProcess $profile
 $profile = $null
 
 $cli = Join-Path $PSScriptRoot "run_cli.ps1"
-$executionRoot = Join-Path $projectRoot "artifacts\scientific_v2\executions"
+$executionRoot = Join-Path $projectRoot ("artifacts\scientific_{0}\executions" -f $ScientificVersion)
 
 & $cli scientific-validate
 if ($LASTEXITCODE -ne 0) {
@@ -105,7 +109,7 @@ for ($round = 0; $round -le $MaxRecoveryRounds; $round++) {
     }
 
     if ($round -ge $MaxRecoveryRounds) {
-        Write-Output "V2 execution still has $runtimeErrors runtime-error nodes; successful nodes were not replayed."
+        Write-Output ("{0} execution still has {1} runtime-error nodes; successful nodes were not replayed." -f $ScientificVersion.ToUpperInvariant(), $runtimeErrors)
         exit 2
     }
 

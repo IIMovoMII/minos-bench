@@ -42,6 +42,8 @@ artifacts/**
 !artifacts/scientific_v2/executions/scientific-v2-20260804-a-recovery-4/
 !artifacts/scientific_v2/executions/scientific-v2-20260804-a-recovery-4/machine_final_report.json
 datasets/holdout/reviews.jsonl
+datasets/scientific_v3_candidate/
+configs/scientific_v3_candidate.json
 
 # Editors, operating systems, and temporary files
 .idea/

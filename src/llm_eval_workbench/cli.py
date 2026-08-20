@@ -67,11 +67,22 @@ def _discover_project_root() -> Path:
 
 
 PROJECT_ROOT = _discover_project_root()
-SCIENTIFIC_DATA_DIR = PROJECT_ROOT / "datasets" / "scientific_v2"
-SCIENTIFIC_PROTOCOL_PATH = PROJECT_ROOT / "configs" / "scientific_v2.json"
-SCIENTIFIC_EXECUTION_ROOT = PROJECT_ROOT / "artifacts" / "scientific_v2" / "executions"
+SCIENTIFIC_VERSION = os.environ.get("LLM_EVAL_SCIENTIFIC_VERSION", "v3").casefold()
+if SCIENTIFIC_VERSION not in {"v2", "v3"}:
+    raise RuntimeError("LLM_EVAL_SCIENTIFIC_VERSION must be v2 or v3")
+SCIENTIFIC_DATA_DIR = PROJECT_ROOT / "datasets" / f"scientific_{SCIENTIFIC_VERSION}"
+SCIENTIFIC_PROTOCOL_PATH = (
+    PROJECT_ROOT / "configs" / f"scientific_{SCIENTIFIC_VERSION}.json"
+)
+SCIENTIFIC_EXECUTION_ROOT = (
+    PROJECT_ROOT / "artifacts" / f"scientific_{SCIENTIFIC_VERSION}" / "executions"
+)
 SCIENTIFIC_SOURCE_AUDIT = (
-    PROJECT_ROOT.parents[1] / "research" / "PROJECT3_BENCHMARK_SOURCE_AUDIT_20260802.md"
+    PROJECT_ROOT / "docs" / "SCIENTIFIC_V3_SOURCE_AUDIT_20260820.md"
+    if SCIENTIFIC_VERSION == "v3"
+    else PROJECT_ROOT.parents[1]
+    / "research"
+    / "PROJECT3_BENCHMARK_SOURCE_AUDIT_20260802.md"
 )
 
 

@@ -1,0 +1,61 @@
+{
+  "counts": {
+    "all_questions": 37,
+    "judge_validation_families": 7,
+    "judge_validation_responses": 14,
+    "regression": 1,
+    "rule_development": 3,
+    "target_comparison": 24,
+    "technical_probes": 2
+  },
+  "created_at": "2026-08-20T14:00:00Z",
+  "data_use_distribution": {
+    "judge_validation": 7,
+    "regression": 1,
+    "rule_development": 3,
+    "target_comparison": 24,
+    "technical_probes": 2
+  },
+  "dataset_version": "scientific-v3.0",
+  "difficulty_distribution": {
+    "D2": 12,
+    "D3": 12
+  },
+  "excluded_source_types": [
+    "synthetic_draft"
+  ],
+  "file_sha256": {
+    "judge_validation_cases.jsonl": "19ea57e9d8545e682d8e5ce5ba315815eb038fa7c59868d20ea1fdfac56ea318",
+    "judge_validation_responses.jsonl": "9d95d83a7bca87b1c51ef948b00768c053a8764657ffa834d004ec5a832da6d6",
+    "regression.jsonl": "23a2daa7fb6613737f72c815c1ebb26fd925b367547de4d34aa47656b413399e",
+    "rule_development.jsonl": "1a5f944a25c3c448a9e6e0a38a4e149fa6f3683fc7d58c4a805d278e4e09fbbb",
+    "source_ledger.jsonl": "61eaddeeb1a13385f0214900705bf70c02ad74a1275b3a4c11aa40f89f4343b5",
+    "target_comparison.jsonl": "f6de09e6df374d0f494b878efdd566e47b7311c50f7d6da457762bbf743ae580",
+    "technical_probes.jsonl": "0b838bc690f535791f5de7aa70f459cbcb2c0ea0ad206ed406ec9f16b2c55692"
+  },
+  "risk_cell_distribution": {
+    "gq.answerability_refusal": 2,
+    "gq.negative_conflict_citation": 2,
+    "gq.structured_multistep_evidence": 2,
+    "ig.cross_turn_long_context": 2,
+    "ig.ood_multi_constraint": 2,
+    "ig.priority_negation_prohibition": 2,
+    "mt.implicit_memory": 2,
+    "mt.instruction_retention": 2,
+    "mt.version_editing_self_coherence": 2,
+    "st.canonicalization_insufficient_info": 2,
+    "st.side_effect_final_state_untrusted_output": 2,
+    "st.state_dependency": 2
+  },
+  "schema_module": "llm_eval_workbench.scientific_schemas",
+  "schema_version": "scientific-dataset-v3",
+  "source_audit_path": "docs/SCIENTIFIC_V3_SOURCE_AUDIT_20260820.md",
+  "source_audit_sha256": "18a95599e86e0d00e0dca6642ce7284d878aa4485347bb897fb2b6b2ca35fa7c",
+  "source_audit_version": "2026-08-20",
+  "task_pack_distribution": {
+    "grounded_qa": 6,
+    "instruction_generation": 6,
+    "multi_turn": 6,
+    "structured_tool": 6
+  }
+}

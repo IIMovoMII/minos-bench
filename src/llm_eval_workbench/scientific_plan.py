@@ -32,8 +32,17 @@ def load_scientific_protocol(path: str | Path) -> dict[str, Any]:
     configured_ids = tuple(item["config_id"] for item in value.get("configs", []))
     if configured_ids != CONFIG_IDS:
         raise ValueError(f"scientific protocol config order must be {CONFIG_IDS}")
-    if value.get("judge", {}).get("protocol_version") != "atomic-judge-v1":
-        raise ValueError("scientific protocol must use atomic-judge-v1")
+    protocol_version = str(value.get("protocol_version", ""))
+    expected_judge_protocol = (
+        "atomic-judge-v2"
+        if protocol_version.startswith("scientific-v3")
+        else "atomic-judge-v1"
+    )
+    if value.get("judge", {}).get("protocol_version") != expected_judge_protocol:
+        raise ValueError(
+            f"{protocol_version or 'scientific protocol'} must use "
+            f"{expected_judge_protocol}"
+        )
     if value.get("api_contract", {}).get("endpoint_mode") != "responses":
         raise ValueError("scientific protocol must use Responses")
     if value.get("api_contract", {}).get("stream") is not False:
@@ -56,7 +65,7 @@ def load_scientific_protocol(path: str | Path) -> dict[str, Any]:
 
 
 def _build_nodes(
-    case_ids: list[str],
+    cases: list[tuple[str, int]],
     validation_response_ids: list[tuple[str, str]],
     *,
     run_provider_probes: bool = True,
@@ -108,7 +117,9 @@ def _build_nodes(
                     probe_id=node_id.removeprefix("technical-"),
                 )
             )
-    technical_ids = [item[0] for item in technical_nodes] if run_technical_probes else []
+    technical_ids = (
+        [item[0] for item in technical_nodes] if run_technical_probes else []
+    )
     upstream_ids = technical_ids or upstream_ids
     validation_ids: list[str] = []
     if run_judge_validation:
@@ -135,7 +146,7 @@ def _build_nodes(
     )
     target_ids: list[str] = []
     for config_id in CONFIG_IDS:
-        for case_id in case_ids:
+        for case_id, max_agent_turns in cases:
             node_id = f"target--{config_id}--{case_id}"
             target_ids.append(node_id)
             nodes.append(
@@ -144,7 +155,7 @@ def _build_nodes(
                     stage=ExecutionStage.TARGET_GENERATION,
                     dependencies=["judge-validation-complete"],
                     request_owner="target",
-                    planned_requests=1,
+                    planned_requests=max_agent_turns,
                     config_id=config_id,
                     case_id=case_id,
                 )
@@ -158,7 +169,7 @@ def _build_nodes(
     )
     judge_ids: list[str] = []
     for config_id in CONFIG_IDS:
-        for case_id in case_ids:
+        for case_id, _ in cases:
             node_id = f"judge--{config_id}--{case_id}"
             judge_ids.append(node_id)
             nodes.append(
@@ -205,7 +216,7 @@ def build_execution_plan(
         (item.case_id, item.response_id) for item in validation_responses
     )
     nodes = _build_nodes(
-        [case.case_id for case in cases],
+        [(case.case_id, case.max_agent_turns) for case in cases],
         validation_pairs,
         run_provider_probes=bool(
             protocol.get("matrix", {}).get("run_provider_probes", True)
@@ -219,10 +230,13 @@ def build_execution_plan(
     )
     base_requests = sum(node.planned_requests for node in nodes)
     matrix = protocol.get("matrix", {})
+    formal_target_requests = sum(
+        case.max_agent_turns for case in cases
+    ) * len(CONFIG_IDS)
     expected_matrix = {
         "formal_cases": len(cases),
         "configurations": len(CONFIG_IDS),
-        "formal_target_requests": len(cases) * len(CONFIG_IDS),
+        "formal_target_requests": formal_target_requests,
         "formal_judge_requests": len(cases) * len(CONFIG_IDS),
         "planned_base_requests": base_requests,
     }
@@ -248,7 +262,7 @@ def build_execution_plan(
         protocol_sha256=sha256_file(protocol_path),
         config_ids=list(CONFIG_IDS),
         formal_case_count=len(cases),
-        formal_target_requests=len(cases) * len(CONFIG_IDS),
+        formal_target_requests=formal_target_requests,
         formal_judge_requests=len(cases) * len(CONFIG_IDS),
         provider_probe_requests=sum(
             node.planned_requests

@@ -17,6 +17,7 @@ def test_scientific_powershell_entrypoint_parses_without_execution() -> None:
     for relative_path in (
         "scripts/run_scientific_v1.ps1",
         "scripts/run_scientific_v2.ps1",
+        "scripts/run_scientific_v3.ps1",
         "scripts/run_scientific_offline_acceptance.ps1",
         "scripts/run_scientific_recovery.ps1",
         "scripts/start_ui.ps1",
@@ -55,11 +56,17 @@ def test_new_entrypoint_uses_only_scientific_v1_commands() -> None:
     assert "Show-ModelProfileSummary" not in source
 
 
-def test_v2_entrypoint_uses_v2_artifacts_and_no_quality_retry() -> None:
+def test_versioned_entrypoints_select_artifacts_without_quality_retry() -> None:
     source = (PROJECT_ROOT / "scripts" / "run_scientific_v2.ps1").read_text(
         encoding="utf-8"
     )
-    assert "artifacts\\scientific_v2\\executions" in source
+    v3_source = (PROJECT_ROOT / "scripts" / "run_scientific_v3.ps1").read_text(
+        encoding="utf-8"
+    )
+    assert "LLM_EVAL_SCIENTIFIC_VERSION" in source
+    assert "artifacts\\scientific_{0}\\executions" in source
+    assert '[string]$ScientificVersion = "v2"' in source
+    assert "-ScientificVersion v3" in v3_source
     assert "allow-runtime-recovery" in source
     assert "runtime_error" in source
     assert "run_full_pipeline.ps1" not in source

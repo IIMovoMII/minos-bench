@@ -1,24 +1,30 @@
 # 基于 DeepEval 的通用 LLM 质量评测工作台 POC
 
-状态：执行工程已完成；Scientific v2 题目效度与模型比较结论正在重建
-版本：v2.3
+状态：执行工程已完成；Scientific v3.0 已离线冻结并替换默认入口，尚未在线运行
+版本：v2.5
 日期：2026-08-20
 项目类型：个人可复现 POC  
 公开名称：Minos Bench（米诺斯审判台）  
 
-> 本文是项目的产品与实施权威。2026-08-20 逐题有效性复审确认：Scientific v2 的执行矩阵及派生恢复已经完成，96/96 目标输出、96/96 合法 Judge、0 运行错误属于工程事实；但 24 题多数只做到公开方法迁移，具体中文题、Gold、反例和检查器尚未逐题证明与官方任务/评分器等价，且已确认存在直接检查与 Judge 误杀。四配置历史分数、排序、critical 计数和 99.73% 覆盖率暂停作为模型能力、简历成绩或面试结论。当前效力由 `docs/SCIENTIFIC_V2_VALIDITY_REAUDIT_20260820.md` 和 `docs/PROJECT3_CURRENT_STATUS_20260802.md` 裁决。
+> 本文是项目的产品与实施权威。2026-08-20 逐题有效性复审确认：Scientific v2 的执行矩阵及派生恢复已经完成，96/96 目标输出、96/96 合法 Judge、0 运行错误属于工程事实；但 24 题多数只做到公开方法迁移，具体中文题、Gold、反例和检查器尚未逐题证明与官方任务/评分器等价，且已确认存在直接检查与 Judge 误杀。四配置历史分数、排序、critical 计数和 99.73% 覆盖率暂停作为模型能力、简历成绩或面试结论。Codex 后续源证据裁决得到 82 PASS、2 FAIL、12 INVALID_CASE，仅作历史诊断，不是新分数。当前效力由 `docs/SCIENTIFIC_V2_VALIDITY_REAUDIT_20260820.md`、`docs/SCIENTIFIC_V2_SOURCE_ADJUDICATION_20260820.md` 和 `docs/PROJECT3_CURRENT_STATUS_20260802.md` 裁决。
 
 > Scientific v1 的派生恢复与机器最终报告继续作为历史工程证据：`scientific-v1-20260804-v17-recovery-a` 达到 227/227 节点、100/100 目标输出、100/100 Judge 结果和 14/14 Judge 固定体检。该历史结论只适用于 V1 题集、规则和单 Judge，不等于客观真值、生产效果或通用模型排名。
 
 > **2026-08-02 最终产品方案：**现有 40/8、G-Eval、旧阈值、重复次数和旧三组矩阵只代表工程基线。候选人逐项批准的 v3 采用能力风险矩阵、直接核验/风险提示分权、原子语义初审、候选人参考判断、五类数据用途、四配置控制实验和参考总分。正式执行允许主动一键跑完预先冻结的有限矩阵；每配置每题生成一次、每答案评分一次，不做波动实验，不设累计请求/Token 门禁，但禁止质量触发重生成、自动扩张矩阵或自动新建下一轮。详见 `docs/SCIENTIFIC_EVALUATION_IMPLEMENTATION_PLAN_V3_APPROVED.md`。
 
-> **当前阶段入口：**先读 `docs/PROJECT3_CURRENT_STATUS_20260802.md` 和 `docs/SCIENTIFIC_V2_VALIDITY_REAUDIT_20260820.md`。V2 机器最终报告和匿名包保持不可变，只用于执行、恢复和评分失败复盘；下一次模型比较必须新建题集版本、manifest 和执行编号。
+> **当前阶段入口：**先读 `docs/PROJECT3_CURRENT_STATUS_20260802.md`、`docs/SCIENTIFIC_V3_SOURCE_AUDIT_20260820.md`、`docs/FORMAL_BENCHMARK_BACKED_QUESTION_SET_V3.md`、`docs/SCIENTIFIC_V2_VALIDITY_REAUDIT_20260820.md` 和 `docs/SCIENTIFIC_V2_SOURCE_ADJUDICATION_20260820.md`。V2 机器最终报告和匿名包保持不可变，只用于执行、恢复和评分失败复盘；v3.0 已使用独立数据、协议和执行编号完成离线冻结，但尚无在线模型结果。
 
 当前可核验里程碑：
 
 - Scientific v2 已封印 24 道历史运行题，四类任务各 6 道；12 个风险格各含一个 D2 和一个 D3 独立场景。manifest SHA-256 为 `3cd5c60f3aae6d57c2622409ad8b4946f66e80506da75a6c25e474247ee18efc`，seal SHA-256 为 `4c610a10c3f8667fbfafd9f343256efa9b1ac944b93209ddc4f3f5bf5da4387a`；
 - V2 活动计划为 96 次目标生成、96 次 Judge 和 4 次最小探针，计划基数 196；定向离线冻结相关 41 项测试、Ruff、compileall 和 PowerShell 入口解析通过，真实 Provider 请求为 0；
 - V2 最终派生执行 `scientific-v2-20260804-a-recovery-4` 达到 200/200 节点、96/96 目标输出、96/96 合法 Judge；四个匿名配置的历史机器分数为 87.92、82.43、85.83、85.21，已撤回模型比较与发布裁决效力；
+- V2 源证据裁决已覆盖 96/96 历史输出：82 PASS、2 FAIL、12 INVALID_CASE；该分布只用于诊断题面、checker、Judge 和 runner，不换算准确率或排名；
+- Scientific v3.0 已生成 24 道正式比较题、完整来源台账与人类可读题集；每题登记具体来源任务/方法、原成功定义、原检查器、保留不变量、表层改写与许可证用法。24/24 Gold 可由源证据唯一支持；20 个反例触发直接检查，4 个保留为纯语义反例。封印文件固定以 UTF-8 LF 生成，manifest SHA-256 为 `f0b8cee99edb8390d1c5bb61f116a420200316ea930702a478aefc8259280855`，seal SHA-256 为 `129946b930aa90a3ca7c837142a3415317ec568284a1a9113fc6a83c9a060e7a`；
+- V3.0 协议 SHA-256 为 `6a1fe12d4560b9d17939ce332f29040f1a6f6da9e8a8e3d076ff904d60315d24`，按真实工具轮次规划 108 次目标请求、96 次单 Judge 和 4 次最小探针，计划基数 208；该数字是请求上限规划，不是已发生调用。当前 26 项 v3/入口定向测试与 40 项 v1/v2 兼容回归通过，Ruff、compileall、manifest/seal 审计通过，真实 Provider 请求为 0；
+- 独立执行计划 `scientific-v3-20260820-a` 已不可变创建，含 200 个执行节点；CLI 默认指向 v3，v2 脚本显式锁回历史版本，V3 有独立 PowerShell 入口和 UI 批次目录。计划创建不加载凭据，也未请求 Provider；
+- 迭代工具 runner 已实现并本地验证：`CMP-ST-21` 最多两轮，`CMP-ST-22` 最多三轮；后续动作只有在前一步模拟结果成功并回传后才能执行，同一轮预写依赖动作会触发前置条件失败；
+- 原子 Judge 输入已删除 Gold、反例、Gold 工具调用和模拟器内部答案，明确接受事实等价改写，并把无关格式、标点和排序排除在普通语义准则之外；最终业务裁决仍由 Codex/人工依据源证据完成；
 - 冻结主数据 40/40 有效，dataset hash 为 `2b51a3ae8b22e501c4dee6d63353c3ba99e1d16cfe6cce515fbe59e23803993c`；
 - Scientific v1 原离线验收 `84/84 passed`；当前 adapter-native、最小 LiteLLM 健康检查、Judge advisory 解析错误、确定性路由熔断与探针收据复用合同为 `94/94 passed`，Ruff、compileall、封印校验和 PowerShell 语法通过；
 - Scientific v1 数据 manifest SHA-256 为 `5d6d862fc18a0ca001c8a01ac2d2dc96f6e2718cf04aa42290d01988cb715db5`，seal SHA-256 为 `51a7ffdd94f5bde385776f05e0aa1c5f52b40718b9f63a096ea2cddd77fbbc34`；

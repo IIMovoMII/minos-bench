@@ -100,6 +100,11 @@ def ledger_entry_for_case(case: ScientificCase) -> SourceLedgerEntry:
         original_case_id_or_method=source.original_case_id_or_method,
         license=source.license,
         adaptation_note=source.adaptation_note,
+        source_success_definition=source.source_success_definition,
+        source_checker_reference=source.source_checker_reference,
+        preserved_invariants=source.preserved_invariants,
+        surface_changes=source.surface_changes,
+        license_use=source.license_use,
         data_use=case.data_use,
         scenario_family=case.scenario_family,
         version=case.version,
@@ -133,6 +138,8 @@ def _manifest_payload(
     task_distribution = Counter(case.task_pack.value for case in target_cases)
     data_use_distribution = Counter(case.data_use.value for case in cases)
     is_v2 = dataset_version.startswith("scientific-v2")
+    is_v3 = dataset_version.startswith("scientific-v3")
+    is_modern = is_v2 or is_v3
     difficulty_distribution = Counter(
         case.difficulty for case in target_cases if case.difficulty is not None
     )
@@ -141,15 +148,17 @@ def _manifest_payload(
     )
     return ScientificDatasetManifest(
         schema_version=(
-            "scientific-dataset-v2" if is_v2 else "scientific-dataset-v1"
+            "scientific-dataset-v3"
+            if is_v3
+            else "scientific-dataset-v2"
+            if is_v2
+            else "scientific-dataset-v1"
         ),
         dataset_version=dataset_version,
         created_at=created_at,
         source_audit_version=source_audit_version,
         source_audit_path=source_audit_record_path,
-        source_audit_sha256=(
-            source_audit_sha256 or sha256_file(source_audit_path)
-        ),
+        source_audit_sha256=(source_audit_sha256 or sha256_file(source_audit_path)),
         schema_module="llm_eval_workbench.scientific_schemas",
         file_sha256={name: sha256_file(data_dir / name) for name in CONTENT_FILES},
         counts={
@@ -165,19 +174,24 @@ def _manifest_payload(
         data_use_distribution=dict(sorted(data_use_distribution.items())),
         excluded_source_types=[SourceType.SYNTHETIC_DRAFT],
         difficulty_distribution=(
-            dict(sorted(difficulty_distribution.items())) if is_v2 else None
+            dict(sorted(difficulty_distribution.items())) if is_modern else None
         ),
         risk_cell_distribution=(
-            dict(sorted(risk_cell_distribution.items())) if is_v2 else None
+            dict(sorted(risk_cell_distribution.items())) if is_modern else None
         ),
     )
 
 
 def _atomic_json(path: Path, value: Any) -> None:
     temporary = path.with_suffix(path.suffix + ".tmp")
-    temporary.write_text(
-        json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True, default=str),
-        encoding="utf-8",
+    temporary.write_bytes(
+        json.dumps(
+            value,
+            ensure_ascii=False,
+            indent=2,
+            sort_keys=True,
+            default=str,
+        ).encode("utf-8")
     )
     os.replace(temporary, path)
 
@@ -189,6 +203,9 @@ def write_manifest_and_seal(
     timestamp: datetime | None = None,
     dataset_version: str = "scientific-v1.0",
     source_audit_version: str = "2026-08-02",
+    source_audit_record_path: str = (
+        "research/PROJECT3_BENCHMARK_SOURCE_AUDIT_20260802.md"
+    ),
 ) -> tuple[ScientificDatasetManifest, ScientificDatasetSeal]:
     directory = Path(data_dir)
     created_at = timestamp or datetime.now(UTC)
@@ -198,13 +215,16 @@ def write_manifest_and_seal(
         created_at=created_at,
         dataset_version=dataset_version,
         source_audit_version=source_audit_version,
+        source_audit_record_path=source_audit_record_path,
     )
     manifest_path = directory / "manifest.json"
     _atomic_json(manifest_path, manifest.model_dump(mode="json"))
     cases = load_scientific_cases(directory)
     seal = ScientificDatasetSeal(
         seal_version=(
-            "scientific-dataset-seal-v2"
+            "scientific-dataset-seal-v3"
+            if dataset_version.startswith("scientific-v3")
+            else "scientific-dataset-seal-v2"
             if dataset_version.startswith("scientific-v2")
             else "scientific-dataset-seal-v1"
         ),
@@ -308,10 +328,18 @@ def audit_scientific_dataset(
             dataset_version = manifest_header.dataset_version
         except (OSError, ValueError):
             pass
-    is_v2 = dataset_version.startswith("scientific-v2") or (
+    is_v3 = dataset_version.startswith("scientific-v3") or (
         bool(target_cases)
-        and all(case.version.startswith("2") for case in target_cases)
+        and all(case.version.startswith("3") for case in target_cases)
     )
+    is_v2 = not is_v3 and (
+        dataset_version.startswith("scientific-v2")
+        or (
+            bool(target_cases)
+            and all(case.version.startswith("2") for case in target_cases)
+        )
+    )
+    is_modern = is_v2 or is_v3
     expected_distribution = (
         {
             TaskPack.INSTRUCTION_GENERATION.value: 6,
@@ -319,7 +347,7 @@ def audit_scientific_dataset(
             TaskPack.MULTI_TURN.value: 6,
             TaskPack.STRUCTURED_TOOL.value: 6,
         }
-        if is_v2
+        if is_modern
         else {
             TaskPack.INSTRUCTION_GENERATION.value: 6,
             TaskPack.GROUNDED_QA.value: 7,
@@ -328,7 +356,7 @@ def audit_scientific_dataset(
         }
     )
     actual_distribution = Counter(case.task_pack.value for case in target_cases)
-    expected_target_count = 24 if is_v2 else 25
+    expected_target_count = 24 if is_modern else 25
     if len(target_cases) != expected_target_count:
         errors.append(
             "target comparison count must be "
@@ -366,16 +394,16 @@ def audit_scientific_dataset(
         errors.append("Judge validation requires exactly 14 fixed responses")
     errors.extend(_validate_judge_responses(validation_cases, validation_responses))
 
-    if is_v2:
+    if is_modern:
         risk_counts = Counter(case.risk_cell for case in target_cases)
         difficulty_counts = Counter(case.difficulty for case in target_cases)
         if len(risk_counts) != 12 or set(risk_counts.values()) != {2}:
             errors.append(
-                "scientific v2 requires 12 risk cells with exactly 2 cases each"
+                "scientific v2/v3 requires 12 risk cells with exactly 2 cases each"
             )
         if difficulty_counts != {"D2": 12, "D3": 12}:
             errors.append(
-                "scientific v2 difficulty distribution must be D2=12 and D3=12"
+                "scientific v2/v3 difficulty distribution must be D2=12 and D3=12"
             )
         if len({case.scenario_family for case in target_cases}) != len(target_cases):
             errors.append("scientific v2 comparison scenario families must be unique")
@@ -389,9 +417,11 @@ def audit_scientific_dataset(
                     case.checker_boundary,
                 ]
             ):
-                errors.append(f"{case.case_id}: scientific v2 metadata incomplete")
+                errors.append(
+                    f"{case.case_id}: scientific comparison metadata incomplete"
+                )
             if not case.gold_answer and not case.gold_tool_calls:
-                errors.append(f"{case.case_id}: scientific v2 gold is missing")
+                errors.append(f"{case.case_id}: scientific comparison gold is missing")
 
     manifest_valid = False
     seal_valid = False
@@ -426,11 +456,11 @@ def audit_scientific_dataset(
             )
             if not seal_valid:
                 errors.append("dataset seal does not match current content")
-            source_audit_current_match = (
-                manifest.source_audit_sha256 == sha256_file(audit_path)
+            source_audit_current_match = manifest.source_audit_sha256 == sha256_file(
+                audit_path
             )
-            if is_v2 and not source_audit_current_match:
-                errors.append("active scientific v2 source audit hash is stale")
+            if is_modern and not source_audit_current_match:
+                errors.append("active scientific source audit hash is stale")
         except (OSError, ValueError) as error:
             errors.append(f"manifest/seal validation failed: {type(error).__name__}")
 

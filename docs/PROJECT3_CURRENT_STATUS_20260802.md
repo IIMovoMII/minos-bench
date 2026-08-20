@@ -1,6 +1,6 @@
 # Project 3 当前状态与下一步（2026-08-04）
 
-本文件是 Project 3 的当前阶段入口。产品方向由上级 `PROJECT_SPEC.md` 和 `SCIENTIFIC_EVALUATION_IMPLEMENTATION_PLAN_V3_APPROVED.md` 裁决；执行边界由 `EXECUTION_HANDOFF_V1_20260802.md` 裁决。Scientific v1 以下内容是历史基线；Scientific v2 的原始执行工件继续冻结，但其题目效度、直接检查和模型比较分数已于 2026-08-20 进入重建，当前不得再作为有效模型排名。
+本文件是 Project 3 的当前阶段入口。产品方向由上级 `PROJECT_SPEC.md` 和 `SCIENTIFIC_EVALUATION_IMPLEMENTATION_PLAN_V3_APPROVED.md` 裁决；执行边界由 `EXECUTION_HANDOFF_V1_20260802.md` 裁决。Scientific v1 以下内容是历史基线；Scientific v2 的原始执行工件继续冻结且不得再作为有效模型排名。2026-08-20 已完成独立 Scientific v3.0 离线冻结并替换默认 CLI/UI 批次入口，但尚未运行在线矩阵。
 
 ## 一、项目目的
 
@@ -181,9 +181,22 @@ Project 3 已新增 Windows 一键启动和页面内模型配置，但尚未发�
 - 24 题不是官方题目的直接复制；其风险轴参考了 IFEval/IFBench、ALCE/RAG、MultiChallenge、ToolSandbox、AgentDojo、BFCL 等公开方法，但具体中文题面、Gold、反例和检查器大多是项目内重新编写；现有台账没有逐题证明等价迁移。
 - Judge Prompt 没有明确忽略非评测维度的格式、标点和同义改写，Payload 又提供完整 Gold/counterexample，存在参考答案锚定和过严语义判断。
 - 直接检查已确认存在千分位误杀、否定句子串误杀、强制复述无关字面、未明示格式硬门禁和句末标点导致工具参数/终态失败等问题。
-- 23 个机器 FAIL 中，当前至少 9 个可直接确认为真实硬失败；其他项目必须逐题重算，不能继续沿用旧总分。真实语义问题仍存在，但不能与评分器误杀混在一个分数里。
+- 23 个机器 FAIL 不能直接换算为真实模型失败。进一步复核确认，`CMP-ST-21`/`CMP-ST-22` 的后续动作依赖前一步工具结果，而当前 runner 只调用目标模型一次，未执行工具并回传结果后继续下一轮；这 8 个历史 FAIL 首先属于执行器缺少迭代式 Agent 工具循环。原“至少 9 个真实硬失败”初步下界已撤回。旧 Judge 还存在误放，因此不能只复核机器 FAIL。
 - 执行图、节点数、响应数、Judge 合法性和运行错误数属于工程事实，保持不变；四配置参考分、排序、critical 计数和 99.73% 判断覆盖率暂停作为模型能力与简历成绩使用。
 - 当前 24 题、96 份回答和 Judge 回复全部保留为历史审计工件，不删除、不回写、不在线重跑。
-- 下一步先做零 API 重建：补逐题官方任务/检查器来源，修复直接检查和 Judge 合同，用现有答案离线重放并由人工/Codex 按源证据裁决；新题集必须使用新版本、manifest 与执行编号。
+- Codex 已完成 96 份历史输出的零 API 源证据裁决：`CMP-GQ-22` 因时间锚点歧义整题无效，`CMP-ST-21`/`CMP-ST-22` 因 runner 缺迭代工具循环整题无效，合计 12 份不计；剩余 84 份中 82 份通过、2 份失败。该数量只作历史诊断，不是新分数或排名。
+- 下一步补逐题官方任务/检查器来源并实现真实迭代工具 runner；新题集必须使用新版本、manifest 与执行编号。
 
-公开仓库内的复审入口为 `docs/SCIENTIFIC_V2_VALIDITY_REAUDIT_20260820.md`；求职工作区完整复审与来源门禁见 `research/PROJECT3_BENCHMARK_QUESTION_AND_JUDGE_REAUDIT_20260820.md`。旧 `research/PROJECT3_BENCHMARK_SOURCE_AUDIT_20260802.md` 继续保留方法与仓库快照，但其“V2 可用于正式比较”的结论已被取代。
+公开仓库内的复审入口为 `docs/SCIENTIFIC_V2_VALIDITY_REAUDIT_20260820.md`，逐题裁决为 `docs/SCIENTIFIC_V2_SOURCE_ADJUDICATION_20260820.md`；求职工作区完整复审与来源门禁见 `research/PROJECT3_BENCHMARK_QUESTION_AND_JUDGE_REAUDIT_20260820.md`。旧 `research/PROJECT3_BENCHMARK_SOURCE_AUDIT_20260802.md` 继续保留方法与仓库快照，但其“V2 可用于正式比较”的结论已被取代。
+
+## 十二、2026-08-20 Scientific v3.0 离线冻结
+
+- BOSS 指定 Edge profile 的登录探测与“大模型评测”搜索已恢复；只读打开三份相关详情，岗位共性指向原子评分点、致命项、证据核对、稳定口径、Bad Case 归因和可执行结论。小红书只读检索也恢复，补充了 Rubric 原子化和多轮任务终态的从业者经验；市场材料只作产品需求信号，最终题目裁决仍以官方 Benchmark 和源码为准。
+- 官方来源复核覆盖 IFEval、IFBench、IHEval、ALCE、RAGTruth、CRAG、MultiChallenge、BFCL v4、tau2-bench 和 AgentDojo。每道 v3 比较题新增原始任务/方法、原成功定义、原检查器、保留不变量、表层改写和许可证用法；未声明许可证或 CC BY-NC 来源只做方法迁移。
+- `datasets/scientific_v3/` 已冻结 37 个实例，其中 24 道比较题保持四包各 6、12 个风险格各 D2/D3 一题。24/24 Gold 由 Codex 按题面和源证据复核为可唯一支持；20 个登记反例触发代码检查，4 个保留为纯业务语义反例。封印文件固定以 UTF-8 LF 生成，避免 Git CRLF/LF 规范化破坏跨平台哈希；manifest 为 `f0b8cee99edb8390d1c5bb61f116a420200316ea930702a478aefc8259280855`，seal 为 `129946b930aa90a3ca7c837142a3415317ec568284a1a9113fc6a83c9a060e7a`。
+- `CMP-IG-21` 移除 Gold 中“达标〈待核〉”的错误锚点；`CMP-GQ-22` 增加 2026-07-08 结算日；`CMP-ST-21`/`CMP-ST-22` 分别改为两轮/三轮工具观察。工具模拟器执行 JSON Schema、参数/状态前置、同实体核验、结果回传、逐轮 trace 和最终状态；viewer 不能伪造 auditor，跨订单状态不能复用，同轮预写依赖动作也不能伪装成观察后调用。
+- 原子 Judge Payload 不再包含 Gold、反例、Gold 工具调用或模拟器内部输出；指令明确接受事实等价改写，并忽略当前语义准则未登记的格式、标点、顺序和精确措辞。直接检查只显式启用必要归一化，金额允许千分位；退款和评审人题删除会误伤否定表达的禁词子串。
+- V3.0 协议 SHA-256 为 `6a1fe12d4560b9d17939ce332f29040f1a6f6da9e8a8e3d076ff904d60315d24`，按工具最大轮次规划 108 次目标请求、96 次单 Judge 和 4 次最小探针，计划基数 208；这只是请求预算，不是已产生调用。26 项 v3/入口定向测试和 40 项 v1/v2 兼容回归通过，Ruff、compileall、manifest/seal 审计通过，真实 Provider 请求为 0。
+- CLI 默认数据、协议和工件目录已切到 v3；历史 v2 脚本显式锁定旧路径，新增 `scripts/run_scientific_v3.ps1` 和 UI 的 V3 批次入口。不可变计划 `scientific-v3-20260820-a` 已创建，含 200 个节点；尚未加载凭据、运行 Provider probe、目标生成或 Judge，因此不能称为“v3 盲测完成”，也没有任何新模型成绩。
+
+完整题集：`docs/FORMAL_BENCHMARK_BACKED_QUESTION_SET_V3.md`。技术来源与逐题裁决：`docs/SCIENTIFIC_V3_SOURCE_AUDIT_20260820.md`。求职工作区的岗位和小红书证据：`research/PROJECT3_BENCHMARK_SOURCE_AUDIT_20260820.md`。

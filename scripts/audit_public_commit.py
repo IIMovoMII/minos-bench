@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import re
 import subprocess
 import sys
@@ -80,6 +82,14 @@ ALLOWED_ARTIFACT = (
     "artifacts/scientific_v2/executions/"
     "scientific-v2-20260804-a-recovery-4/machine_final_report.json"
 )
+SCIENTIFIC_V3_ROOT = "datasets/scientific_v3"
+SCIENTIFIC_V3_CASE_FILES = (
+    "rule_development.jsonl",
+    "technical_probes.jsonl",
+    "judge_validation_cases.jsonl",
+    "target_comparison.jsonl",
+    "regression.jsonl",
+)
 
 
 def _run_git(*args: str) -> bytes:
@@ -122,6 +132,64 @@ def _safe_example(value: str, path: str) -> bool:
     )
 
 
+def _sha256_blob(value: bytes) -> str:
+    return hashlib.sha256(value).hexdigest()
+
+
+def _sha256_value(value: object) -> str:
+    serialized = json.dumps(
+        value,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+    return _sha256_blob(serialized.encode("utf-8"))
+
+
+def _audit_scientific_v3_index_seal() -> list[Finding]:
+    manifest_path = f"{SCIENTIFIC_V3_ROOT}/manifest.json"
+    seal_path = f"{SCIENTIFIC_V3_ROOT}/seal.json"
+    findings: list[Finding] = []
+    try:
+        manifest_blob = _index_blob(manifest_path)
+        seal_blob = _index_blob(seal_path)
+        manifest = json.loads(manifest_blob)
+        seal = json.loads(seal_blob)
+        file_hashes = manifest["file_sha256"]
+        for name, expected_hash in file_hashes.items():
+            path = f"{SCIENTIFIC_V3_ROOT}/{name}"
+            if _sha256_blob(_index_blob(path)) != expected_hash:
+                findings.append(Finding("V3 内容文件与 manifest 不一致", path))
+
+        if _sha256_blob(manifest_blob) != seal["manifest_sha256"]:
+            findings.append(Finding("V3 manifest 与 seal 不一致", manifest_path))
+        if _sha256_value(file_hashes) != seal["aggregate_content_sha256"]:
+            findings.append(Finding("V3 聚合内容哈希与 seal 不一致", seal_path))
+
+        source_audit_path = PurePosixPath(manifest["source_audit_path"])
+        if source_audit_path.is_absolute() or ".." in source_audit_path.parts:
+            findings.append(Finding("V3 来源审计路径越界", manifest_path))
+        else:
+            source_path = source_audit_path.as_posix()
+            source_hash = _sha256_blob(_index_blob(source_path))
+            if source_hash != manifest["source_audit_sha256"]:
+                findings.append(Finding("V3 来源审计与 manifest 不一致", source_path))
+            if source_hash != seal["source_audit_sha256"]:
+                findings.append(Finding("V3 来源审计与 seal 不一致", source_path))
+
+        case_ids: list[str] = []
+        for name in SCIENTIFIC_V3_CASE_FILES:
+            blob = _index_blob(f"{SCIENTIFIC_V3_ROOT}/{name}")
+            for line in blob.decode("utf-8").splitlines():
+                if line.strip():
+                    case_ids.append(str(json.loads(line)["case_id"]))
+        if _sha256_value(sorted(case_ids)) != seal["case_ids_sha256"]:
+            findings.append(Finding("V3 case ID 集合与 seal 不一致", seal_path))
+    except (KeyError, TypeError, ValueError, UnicodeError, RuntimeError):
+        findings.append(Finding("V3 Git 索引封印无法解析", manifest_path))
+    return findings
+
+
 def audit_staged_commit() -> tuple[Finding, ...]:
     findings: list[Finding] = []
     for path in _staged_paths():
@@ -161,6 +229,7 @@ def audit_staged_commit() -> tuple[Finding, ...]:
                         Finding("疑似静态凭据或私有接口赋值", path, line_number)
                     )
 
+    findings.extend(_audit_scientific_v3_index_seal())
     return tuple(findings)
 
 

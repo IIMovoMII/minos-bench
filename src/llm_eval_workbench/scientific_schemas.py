@@ -92,6 +92,11 @@ class ScientificSource(ScientificModel):
     original_case_id_or_method: str = Field(min_length=1)
     license: str = Field(min_length=1)
     adaptation_note: str = Field(min_length=1)
+    source_success_definition: str | None = Field(default=None, min_length=1)
+    source_checker_reference: str | None = Field(default=None, min_length=1)
+    preserved_invariants: list[str] = Field(default_factory=list)
+    surface_changes: list[str] = Field(default_factory=list)
+    license_use: str | None = Field(default=None, min_length=1)
 
     @model_validator(mode="after")
     def validate_license_use(self) -> ScientificSource:
@@ -125,6 +130,7 @@ class DirectCheckSpec(ScientificModel):
         "min_length_without_whitespace",
         "json_schema",
         "tool_calls_exact",
+        "tool_observation_sequence",
         "no_tool_call",
         "final_state_any_path",
     ]
@@ -189,6 +195,7 @@ class ScientificCase(ScientificModel):
     turns: list[ScientificTurn] = Field(default_factory=list)
     available_tools: list[dict[str, Any]] = Field(default_factory=list)
     tool_outputs: list[dict[str, Any]] = Field(default_factory=list)
+    max_agent_turns: int = Field(default=1, ge=1, le=8)
     expected_behavior: str = Field(min_length=1)
     direct_checks: list[DirectCheckSpec] = Field(default_factory=list)
     semantic_criteria: list[AtomicCriterion] = Field(default_factory=list)
@@ -219,19 +226,61 @@ class ScientificCase(ScientificModel):
             raise ValueError("question judgment_authority must match its criteria")
         if self.data_use == DataUse.TARGET_COMPARISON and not self.semantic_criteria:
             raise ValueError("comparison cases require atomic semantic criteria")
-        if self.data_use == DataUse.TARGET_COMPARISON and self.version.startswith("2"):
-            required_v2 = {
+        if self.data_use == DataUse.TARGET_COMPARISON and self.version.startswith(
+            ("2", "3")
+        ):
+            required_comparison = {
                 "risk_cell": self.risk_cell,
                 "difficulty": self.difficulty,
                 "difficulty_rationale": self.difficulty_rationale,
                 "counterexample": self.counterexample,
                 "checker_boundary": self.checker_boundary,
             }
-            missing = [name for name, value in required_v2.items() if not value]
+            missing = [
+                name for name, value in required_comparison.items() if not value
+            ]
             if missing:
-                raise ValueError(f"scientific v2 comparison metadata missing: {missing}")
+                raise ValueError(
+                    f"scientific comparison metadata missing: {missing}"
+                )
             if not self.gold_answer and not self.gold_tool_calls:
-                raise ValueError("scientific v2 comparison cases require a complete gold")
+                raise ValueError(
+                    "scientific comparison cases require a complete gold"
+                )
+        if self.data_use == DataUse.TARGET_COMPARISON and self.version.startswith("3"):
+            source_requirements = {
+                "source_success_definition": self.source.source_success_definition,
+                "source_checker_reference": self.source.source_checker_reference,
+                "preserved_invariants": self.source.preserved_invariants,
+                "surface_changes": self.source.surface_changes,
+                "license_use": self.source.license_use,
+            }
+            missing = [
+                name for name, value in source_requirements.items() if not value
+            ]
+            if missing:
+                raise ValueError(
+                    f"scientific v3 source provenance missing: {missing}"
+                )
+        if self.max_agent_turns > 1:
+            if not self.available_tools:
+                raise ValueError("multi-turn agent cases require available tools")
+            simulated = {
+                str(item.get("name"))
+                for item in self.tool_outputs
+                if item.get("simulation") is True
+            }
+            available = {
+                str(item.get("name"))
+                for item in self.available_tools
+                if item.get("name")
+            }
+            missing = sorted(available - simulated)
+            if missing:
+                raise ValueError(
+                    "multi-turn agent cases require a simulation for every tool: "
+                    f"{missing}"
+                )
         return self
 
 
@@ -250,6 +299,11 @@ class SourceLedgerEntry(ScientificModel):
     original_case_id_or_method: str
     license: str
     adaptation_note: str
+    source_success_definition: str | None = None
+    source_checker_reference: str | None = None
+    preserved_invariants: list[str] = Field(default_factory=list)
+    surface_changes: list[str] = Field(default_factory=list)
+    license_use: str | None = None
     data_use: DataUse
     scenario_family: str
     version: str
@@ -321,6 +375,8 @@ class ScientificOutput(ScientificModel):
     content: str
     tool_calls: list[ToolCall] = Field(default_factory=list)
     environment_state: dict[str, Any] = Field(default_factory=dict)
+    tool_trace: list[dict[str, Any]] = Field(default_factory=list)
+    model_turns: int = 1
     usage: UsageInfo = Field(default_factory=UsageInfo)
     latency_ms: int | None = None
     request_count: int = 1
@@ -386,7 +442,7 @@ class ExecutionNode(ScientificModel):
     stage: ExecutionStage
     dependencies: list[str] = Field(default_factory=list)
     request_owner: Literal["none", "target", "judge"] = "none"
-    planned_requests: int = Field(default=0, ge=0, le=2)
+    planned_requests: int = Field(default=0, ge=0, le=8)
     config_id: str | None = None
     case_id: str | None = None
     probe_id: str | None = None
@@ -438,9 +494,11 @@ class ScientificExecutionPlan(ScientificModel):
 
 
 class ScientificDatasetManifest(ScientificModel):
-    schema_version: Literal["scientific-dataset-v1", "scientific-dataset-v2"] = (
-        "scientific-dataset-v1"
-    )
+    schema_version: Literal[
+        "scientific-dataset-v1",
+        "scientific-dataset-v2",
+        "scientific-dataset-v3",
+    ] = "scientific-dataset-v1"
     dataset_version: str
     created_at: datetime
     source_audit_version: str
@@ -458,7 +516,9 @@ class ScientificDatasetManifest(ScientificModel):
 
 class ScientificDatasetSeal(ScientificModel):
     seal_version: Literal[
-        "scientific-dataset-seal-v1", "scientific-dataset-seal-v2"
+        "scientific-dataset-seal-v1",
+        "scientific-dataset-seal-v2",
+        "scientific-dataset-seal-v3",
     ] = "scientific-dataset-seal-v1"
     status: Literal["sealed"] = "sealed"
     dataset_version: str
