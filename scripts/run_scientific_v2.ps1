@@ -47,9 +47,12 @@ function Invoke-ScientificRun {
     catch {
         throw "scientific-run returned an unreadable safe status (exit $exitCode)"
     }
-    if ($exitCode -ne 0 -and $value.status -ne "completed") {
+    if ($value.status -ne "completed") {
         Write-Output ($value | ConvertTo-Json -Depth 8)
         return $null
+    }
+    if ($exitCode -ne 0) {
+        throw "scientific-run reported completion with a non-zero exit code ($exitCode)"
     }
     return $value
 }
@@ -99,6 +102,10 @@ for ($round = 0; $round -le $MaxRecoveryRounds; $round++) {
 
     $run = Invoke-ScientificRun -Id $currentId
     if ($null -eq $run) {
+        exit 2
+    }
+    if ($run.status -ne "completed") {
+        Write-Output ($run | ConvertTo-Json -Depth 8)
         exit 2
     }
 

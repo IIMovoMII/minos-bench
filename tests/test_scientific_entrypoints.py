@@ -69,6 +69,8 @@ def test_versioned_entrypoints_select_artifacts_without_quality_retry() -> None:
     assert "-ScientificVersion v3" in v3_source
     assert "allow-runtime-recovery" in source
     assert "runtime_error" in source
+    assert 'if ($value.status -ne "completed")' in source
+    assert 'if ($run.status -ne "completed")' in source
     assert "run_full_pipeline.ps1" not in source
 
 

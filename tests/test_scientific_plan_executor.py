@@ -478,6 +478,88 @@ async def test_relay_no_available_channel_503_stops_without_retry(
 
 
 @pytest.mark.asyncio
+async def test_provider_route_resume_keeps_successful_probes_and_clears_old_stop(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _configure_dummy_runtime(monkeypatch)
+    root = tmp_path / "runs"
+    execution_id = "judge-route-resume-v1"
+    create_immutable_plan(execution_root=root, plan=_plan(execution_id))
+    initial_calls: list[dict[str, Any]] = []
+
+    class ServiceUnavailableError(RuntimeError):
+        status_code = 503
+
+        def __init__(self) -> None:
+            super().__init__("relay failure")
+            self.message = "No available channel for model unit-judge"
+
+    async def judge_route_unavailable(**kwargs: Any) -> dict[str, Any]:
+        initial_calls.append(kwargs)
+        if kwargs.get("model") == "openai/unit-judge":
+            raise ServiceUnavailableError
+        return _successful_response(kwargs)
+
+    stopped = await ScientificExecutor(
+        project_root=PROJECT_ROOT,
+        data_dir=DATA_DIR,
+        source_audit_path=SOURCE_AUDIT,
+        protocol_path=PROTOCOL_PATH,
+        execution_root=root,
+        execution_id=execution_id,
+        raw_responses_callable=judge_route_unavailable,
+        allow_runtime_recovery=True,
+    ).execute()
+    assert len(initial_calls) == 4
+    assert stopped["status"] == "stopped_hard"
+    assert stopped["stop_reason"] == "provider_route_unavailable"
+    store = ScientificExecutionStore(root, execution_id)
+    assert all(
+        store.has_node(node_id)
+        for node_id in (
+            "provider-probe-model-a",
+            "provider-probe-model-b",
+            "provider-probe-weak",
+        )
+    )
+    assert not store.has_node("provider-probe-judge")
+
+    resumed_calls: list[dict[str, Any]] = []
+
+    async def successful_resume(**kwargs: Any) -> dict[str, Any]:
+        resumed_calls.append(kwargs)
+        return _successful_response(kwargs)
+
+    resumed = await ScientificExecutor(
+        project_root=PROJECT_ROOT,
+        data_dir=DATA_DIR,
+        source_audit_path=SOURCE_AUDIT,
+        protocol_path=PROTOCOL_PATH,
+        execution_root=root,
+        execution_id=execution_id,
+        raw_responses_callable=successful_resume,
+        allow_runtime_recovery=True,
+    ).execute()
+    assert resumed["status"] == "completed"
+    assert resumed["requests_used"] == 225
+    assert resumed["stop_reason"] is None
+    assert resumed["safe_error"] is None
+    assert resumed["finished_at"] is not None
+    assert len(resumed_calls) == 221
+    assert resumed_calls[0]["model"] == "openai/unit-judge"
+    assert all(
+        call["model"]
+        not in {
+            "openai/unit-target-a",
+            "openai/unit-target-b",
+            "openai/unit-target-weak",
+        }
+        for call in resumed_calls[:1]
+    )
+
+
+@pytest.mark.asyncio
 async def test_judge_validation_contract_error_is_advisory_and_matrix_continues(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

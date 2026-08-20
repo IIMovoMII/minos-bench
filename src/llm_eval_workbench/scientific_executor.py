@@ -408,14 +408,41 @@ class ScientificExecutor:
             return state
         if state.get("status") == "completed":
             return state
-        if str(state.get("status", "")).startswith("stopped"):
+        stopped = str(state.get("status", "")).startswith("stopped")
+        previous_stop_reason = str(state.get("stop_reason") or "")
+        resumable_provider_stops = {
+            "hard_provider_error",
+            "provider_route_unavailable",
+            "runtime_profile_unavailable_or_invalid",
+        }
+        if stopped and not (
+            self.allow_runtime_recovery
+            and previous_stop_reason in resumable_provider_stops
+        ):
             raise ExecutionStopped("terminal_execution_cannot_resume")
         inflight = state.get("inflight_node")
         if inflight and not self.store.has_node(str(inflight)):
-            raise ExecutionStopped("ambiguous_inflight_node_requires_new_execution")
-        state["status"] = "running"
-        state["inflight_node"] = None
-        state["updated_at"] = datetime.now(UTC).isoformat()
+            if not (stopped and previous_stop_reason in resumable_provider_stops):
+                raise ExecutionStopped("ambiguous_inflight_node_requires_new_execution")
+        if stopped:
+            self.store.append_event(
+                {
+                    "event": "execution_resumed_after_provider_failure",
+                    "previous_stop_reason": previous_stop_reason,
+                    "at": datetime.now(UTC).isoformat(),
+                }
+            )
+        state.update(
+            {
+                "status": "running",
+                "current_node": None,
+                "inflight_node": None,
+                "stop_reason": None,
+                "safe_error": None,
+                "finished_at": None,
+                "updated_at": datetime.now(UTC).isoformat(),
+            }
+        )
         self.store.write_state(state)
         return state
 
@@ -980,6 +1007,7 @@ class ScientificExecutor:
                     "current_node": None,
                     "inflight_node": None,
                     "stop_reason": None,
+                    "safe_error": None,
                     "finished_at": datetime.now(UTC).isoformat(),
                     "updated_at": datetime.now(UTC).isoformat(),
                 }
