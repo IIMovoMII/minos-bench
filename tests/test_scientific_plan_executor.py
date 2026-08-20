@@ -560,6 +560,90 @@ async def test_provider_route_resume_keeps_successful_probes_and_clears_old_stop
 
 
 @pytest.mark.asyncio
+async def test_interrupted_provider_probe_can_resume_but_formal_node_cannot(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _configure_dummy_runtime(monkeypatch)
+    root = tmp_path / "runs"
+    execution_id = "interrupted-probe-v1"
+    create_immutable_plan(execution_root=root, plan=_plan(execution_id))
+    store = ScientificExecutionStore(root, execution_id)
+
+    async def successful_response(**kwargs: Any) -> dict[str, Any]:
+        return _successful_response(kwargs)
+
+    state = ScientificExecutor(
+        project_root=PROJECT_ROOT,
+        data_dir=DATA_DIR,
+        source_audit_path=SOURCE_AUDIT,
+        protocol_path=PROTOCOL_PATH,
+        execution_root=root,
+        execution_id=execution_id,
+        raw_responses_callable=successful_response,
+    )._initial_state()
+    state.update(
+        {
+            "status": "interrupted",
+            "current_node": "provider-probe-model-a",
+            "inflight_node": "provider-probe-model-a",
+            "stop_reason": "keyboard_interrupt",
+        }
+    )
+    store.write_state(state)
+
+    resumed = await ScientificExecutor(
+        project_root=PROJECT_ROOT,
+        data_dir=DATA_DIR,
+        source_audit_path=SOURCE_AUDIT,
+        protocol_path=PROTOCOL_PATH,
+        execution_root=root,
+        execution_id=execution_id,
+        raw_responses_callable=successful_response,
+        allow_runtime_recovery=True,
+    ).execute()
+    assert resumed["status"] == "completed"
+    assert "ambiguous_provider_probe_retried" in store.events_path.read_text(
+        encoding="utf-8"
+    )
+
+    blocked_id = "interrupted-formal-v1"
+    create_immutable_plan(execution_root=root, plan=_plan(blocked_id))
+    blocked_store = ScientificExecutionStore(root, blocked_id)
+    blocked_state = ScientificExecutor(
+        project_root=PROJECT_ROOT,
+        data_dir=DATA_DIR,
+        source_audit_path=SOURCE_AUDIT,
+        protocol_path=PROTOCOL_PATH,
+        execution_root=root,
+        execution_id=blocked_id,
+        raw_responses_callable=successful_response,
+    )._initial_state()
+    blocked_state.update(
+        {
+            "status": "interrupted",
+            "current_node": "target--model_a_prompt_v1--CMP-IG-01",
+            "inflight_node": "target--model_a_prompt_v1--CMP-IG-01",
+            "stop_reason": "keyboard_interrupt",
+        }
+    )
+    blocked_store.write_state(blocked_state)
+    with pytest.raises(
+        RuntimeError, match="ambiguous_inflight_node_requires_new_execution"
+    ):
+        await ScientificExecutor(
+            project_root=PROJECT_ROOT,
+            data_dir=DATA_DIR,
+            source_audit_path=SOURCE_AUDIT,
+            protocol_path=PROTOCOL_PATH,
+            execution_root=root,
+            execution_id=blocked_id,
+            raw_responses_callable=successful_response,
+            allow_runtime_recovery=True,
+        ).execute()
+
+
+@pytest.mark.asyncio
 async def test_judge_validation_contract_error_is_advisory_and_matrix_continues(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

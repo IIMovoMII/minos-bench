@@ -409,6 +409,7 @@ class ScientificExecutor:
         if state.get("status") == "completed":
             return state
         stopped = str(state.get("status", "")).startswith("stopped")
+        interrupted = state.get("status") == "interrupted"
         previous_stop_reason = str(state.get("stop_reason") or "")
         resumable_provider_stops = {
             "hard_provider_error",
@@ -421,10 +422,29 @@ class ScientificExecutor:
         ):
             raise ExecutionStopped("terminal_execution_cannot_resume")
         inflight = state.get("inflight_node")
+        ambiguous_provider_probe = bool(
+            interrupted
+            and self.allow_runtime_recovery
+            and inflight
+            and str(inflight).startswith("provider-probe-")
+            and not self.store.has_node(str(inflight))
+        )
         if inflight and not self.store.has_node(str(inflight)):
-            if not (stopped and previous_stop_reason in resumable_provider_stops):
+            if not (
+                (stopped and previous_stop_reason in resumable_provider_stops)
+                or ambiguous_provider_probe
+            ):
                 raise ExecutionStopped("ambiguous_inflight_node_requires_new_execution")
-        if stopped:
+        if ambiguous_provider_probe:
+            self.store.append_event(
+                {
+                    "event": "ambiguous_provider_probe_retried",
+                    "node_id": str(inflight),
+                    "previous_stop_reason": previous_stop_reason,
+                    "at": datetime.now(UTC).isoformat(),
+                }
+            )
+        elif stopped:
             self.store.append_event(
                 {
                     "event": "execution_resumed_after_provider_failure",
