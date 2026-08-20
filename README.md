@@ -42,7 +42,7 @@ cd minos-bench
 | 模式 | 需要配置 | 用途 |
 |---|---|---|
 | 快速体验 | 1 个被测模型 + 1 个 Judge | 验证完整链路；三个目标槽位相同，不用于模型比较 |
-| 完整比较 | 候选模型 A、候选模型 B、弱基线、Judge | 运行四配置匿名比较与 Prompt 控制变量实验 |
+| 完整四槽 | 候选模型 A、候选模型 B、弱基线、Judge | 验证四配置执行链；可信比较需另行使用通过有效性门禁的新题集 |
 
 Key 与完整 Base URL 不会写入仓库。Windows 持久化配置使用当前用户 DPAPI，并保存在项目目录之外。
 
@@ -73,9 +73,9 @@ flowchart LR
 
 评测对象不是一个裸模型名，而是“模型 + Prompt + 生成参数 + 任务数据集”的版本化配置。运行前固定题集、评分规则和执行计划，运行后只允许恢复技术失败；已经成功生成的内容不会因为分数不好而被替换。
 
-## 内置 Scientific v2 评测集
+## 内置 Scientific v2 历史样例集
 
-仓库内置 24 道合成正式题，由 **4 个任务包 × 每包 3 个风险格 × D2/D3 两档难度**组成：
+仓库保留 24 道合成题及其完整运行工件，由 **4 个任务包 × 每包 3 个风险格 × D2/D3 两档难度**组成：
 
 | 任务包 | 覆盖风险 |
 |---|---|
@@ -84,7 +84,9 @@ flowchart LR
 | 多轮对话 | 指令保持、隐含状态、版本修改与跨轮一致性 |
 | 结构化输出与工具调用 | 状态依赖、参数归一化、缺失信息、副作用与最终状态 |
 
-每个题目都登记来源、风险格、难度、允许证据、直接检查、语义 Rubric、正反例和严重程度。题型方法来自公开评测研究，具体场景经过重新编写；完整题面与来源边界见 [`FORMAL_BENCHMARK_BACKED_QUESTION_SET_V2.md`](docs/FORMAL_BENCHMARK_BACKED_QUESTION_SET_V2.md)。
+每个题目都登记来源、风险格、难度、允许证据、直接检查、语义 Rubric、正反例和严重程度。题型方法来自公开评测研究，具体场景由本项目重新编写。
+
+2026-08-20 逐题复审确认：现有台账主要证明“参考了什么方法”，尚未逐题证明业务改写与官方任务、官方成功条件和官方评分器等价；部分直接检查与 Judge 还会误杀千分位、否定句、同义表达和无关格式。因此这 24 题现只用于展示执行、恢复、审计和评分失败复盘，**不再用于可信的模型能力比较**。完整题面见 [`FORMAL_BENCHMARK_BACKED_QUESTION_SET_V2.md`](docs/FORMAL_BENCHMARK_BACKED_QUESTION_SET_V2.md)，复审结论见 [`SCIENTIFIC_V2_VALIDITY_REAUDIT_20260820.md`](docs/SCIENTIFIC_V2_VALIDITY_REAUDIT_20260820.md)。
 
 ## 评分与发布门禁
 
@@ -95,18 +97,18 @@ flowchart LR
 - Provider、解析和合同错误单独记录为运行错误，不计内容 0 分。
 - 任何预登记 critical 错误都会触发发布阻断。
 
-## 公开示例报告
+## 历史运行报告
 
-仓库附带一份身份盲的 Scientific v2 机器报告，用于展示切片、Bad Case 和门禁输出：
+仓库附带一份身份盲的 Scientific v2 历史机器报告，用于展示切片、Bad Case、运行错误分流和追加式恢复。下列数字已撤回模型比较效力，只用于定位历史工件：
 
-| 匿名配置 | 参考总分 | 发布结论 |
+| 匿名配置 | 历史机器分数 | 历史机器结论 |
 |---|---:|---|
 | 配置 A | 87.92 | critical 阻断 |
 | 配置 B | 82.43 | critical 阻断 |
 | 配置 C | 85.83 | critical 阻断 |
 | 配置 D | 85.21 | critical 阻断 |
 
-这份示例包含 24 道题 × 4 个配置产生的 96 份目标输出，以及 96 份合法 Judge 结果。分数只描述仓库内置题集和当前评分合同，不代表通用模型排名。
+这份报告包含 24 道题 × 4 个配置产生的 96 份目标输出，以及 96 份合法 Judge 结果。200/200 节点、96/96 输出、96/96 合法 Judge 和 0 运行错误仍是工程事实；表中分数、排序、`critical` 计数和判断覆盖率不能作为模型能力、准确率或发布结论。
 
 [查看身份盲机器报告](artifacts/scientific_v2/executions/scientific-v2-20260804-a-recovery-4/machine_final_report.json)
 
@@ -155,7 +157,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass `
 minos-bench/
 ├─ app.py                         # Streamlit 中文工作台
 ├─ configs/                       # 评测配置与冻结执行合同
-├─ datasets/scientific_v2/        # 正式题集、来源台账、manifest 与 seal
+├─ datasets/scientific_v2/        # 历史题集、来源台账、manifest 与 seal
 ├─ src/llm_eval_workbench/        # 执行、核验、Judge、恢复与报告
 ├─ scripts/                       # 一键启动、验收、矩阵与安全审计
 ├─ tests/                         # 离线测试
@@ -185,7 +187,8 @@ uv run --no-sync python .\scripts\audit_public_commit.py
 | 文档 | 内容 |
 |---|---|
 | [一键启动与公开边界](docs/PUBLIC_RELEASE_AND_ONE_CLICK_20260819.md) | 环境、页面配置、DPAPI 与 Git 允许列表 |
-| [Scientific v2 正式题集](docs/FORMAL_BENCHMARK_BACKED_QUESTION_SET_V2.md) | 24 道题、风险格、gold、反例与检查边界 |
+| [Scientific v2 历史题集](docs/FORMAL_BENCHMARK_BACKED_QUESTION_SET_V2.md) | 24 道题、风险格、gold、反例与检查边界；当前不承担模型比较 |
+| [Scientific v2 有效性复审](docs/SCIENTIFIC_V2_VALIDITY_REAUDIT_20260820.md) | 评分误杀、分数撤回、逐题来源门禁与零 Provider 重建顺序 |
 | [科学评测实施方案](docs/SCIENTIFIC_EVALUATION_IMPLEMENTATION_PLAN_V3_APPROVED.md) | 产品原则、判断权限、执行矩阵和验收合同 |
 | [有限执行与恢复](docs/EXECUTION_HANDOFF_V1_20260802.md) | 单次 Judge、重试、幂等恢复和停止条件 |
 | [安全说明](SECURITY.md) | 凭据隔离、误提交处置和部署边界 |

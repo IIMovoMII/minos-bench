@@ -1,24 +1,24 @@
 # 基于 DeepEval 的通用 LLM 质量评测工作台 POC
 
-状态：Scientific v2 正式匿名矩阵与机器最终报告已完成  
-版本：v2.2  
-日期：2026-08-04  
+状态：执行工程已完成；Scientific v2 题目效度与模型比较结论正在重建
+版本：v2.3
+日期：2026-08-20
 项目类型：个人可复现 POC  
 公开名称：Minos Bench（米诺斯审判台）  
 
-> 本文是项目的产品与实施权威。截至 2026-08-04，Scientific v2 已把 V1 的 25 道低区分度题降级为历史冒烟/回归证据，并冻结 24 道全新正式题：四类任务各 6 题、12 个风险格、每格一题 D2 与一题 D3。活动矩阵固定为 4 次最小 Provider probe、96 次目标生成和 96 次单次原子 Judge；空/不完整响应和 API 运行失败可恢复，已有非空答案即使内容错误也绝不因质量重跑。正式矩阵及派生恢复已经完成，最终为 96/96 目标输出、96/96 合法 Judge 和 0 个运行错误。
+> 本文是项目的产品与实施权威。2026-08-20 逐题有效性复审确认：Scientific v2 的执行矩阵及派生恢复已经完成，96/96 目标输出、96/96 合法 Judge、0 运行错误属于工程事实；但 24 题多数只做到公开方法迁移，具体中文题、Gold、反例和检查器尚未逐题证明与官方任务/评分器等价，且已确认存在直接检查与 Judge 误杀。四配置历史分数、排序、critical 计数和 99.73% 覆盖率暂停作为模型能力、简历成绩或面试结论。当前效力由 `docs/SCIENTIFIC_V2_VALIDITY_REAUDIT_20260820.md` 和 `docs/PROJECT3_CURRENT_STATUS_20260802.md` 裁决。
 
 > Scientific v1 的派生恢复与机器最终报告继续作为历史工程证据：`scientific-v1-20260804-v17-recovery-a` 达到 227/227 节点、100/100 目标输出、100/100 Judge 结果和 14/14 Judge 固定体检。该历史结论只适用于 V1 题集、规则和单 Judge，不等于客观真值、生产效果或通用模型排名。
 
 > **2026-08-02 最终产品方案：**现有 40/8、G-Eval、旧阈值、重复次数和旧三组矩阵只代表工程基线。候选人逐项批准的 v3 采用能力风险矩阵、直接核验/风险提示分权、原子语义初审、候选人参考判断、五类数据用途、四配置控制实验和参考总分。正式执行允许主动一键跑完预先冻结的有限矩阵；每配置每题生成一次、每答案评分一次，不做波动实验，不设累计请求/Token 门禁，但禁止质量触发重生成、自动扩张矩阵或自动新建下一轮。详见 `docs/SCIENTIFIC_EVALUATION_IMPLEMENTATION_PLAN_V3_APPROVED.md`。
 
-> **当前阶段入口：**先读 `docs/PROJECT3_CURRENT_STATUS_20260802.md`。V2 机器最终报告和匿名包已经生成；人工抽检为可选审计。只有空/API/输出合同运行失败节点允许恢复，内容错误和已有合法 Judge 结果不重跑。此前无逐题出处的 16 道演示题继续排除。
+> **当前阶段入口：**先读 `docs/PROJECT3_CURRENT_STATUS_20260802.md` 和 `docs/SCIENTIFIC_V2_VALIDITY_REAUDIT_20260820.md`。V2 机器最终报告和匿名包保持不可变，只用于执行、恢复和评分失败复盘；下一次模型比较必须新建题集版本、manifest 和执行编号。
 
 当前可核验里程碑：
 
-- Scientific v2 已封印 24 道正式比较题，四类任务各 6 道；12 个风险格各含一个 D2 和一个 D3 独立场景。manifest SHA-256 为 `3cd5c60f3aae6d57c2622409ad8b4946f66e80506da75a6c25e474247ee18efc`，seal SHA-256 为 `4c610a10c3f8667fbfafd9f343256efa9b1ac944b93209ddc4f3f5bf5da4387a`；
+- Scientific v2 已封印 24 道历史运行题，四类任务各 6 道；12 个风险格各含一个 D2 和一个 D3 独立场景。manifest SHA-256 为 `3cd5c60f3aae6d57c2622409ad8b4946f66e80506da75a6c25e474247ee18efc`，seal SHA-256 为 `4c610a10c3f8667fbfafd9f343256efa9b1ac944b93209ddc4f3f5bf5da4387a`；
 - V2 活动计划为 96 次目标生成、96 次 Judge 和 4 次最小探针，计划基数 196；定向离线冻结相关 41 项测试、Ruff、compileall 和 PowerShell 入口解析通过，真实 Provider 请求为 0；
-- V2 最终派生执行 `scientific-v2-20260804-a-recovery-4` 达到 200/200 节点、96/96 目标输出、96/96 合法 Judge；四个匿名配置参考分为 87.92、82.43、85.83、85.21，均有预登记严重错误并阻断发布；
+- V2 最终派生执行 `scientific-v2-20260804-a-recovery-4` 达到 200/200 节点、96/96 目标输出、96/96 合法 Judge；四个匿名配置的历史机器分数为 87.92、82.43、85.83、85.21，已撤回模型比较与发布裁决效力；
 - 冻结主数据 40/40 有效，dataset hash 为 `2b51a3ae8b22e501c4dee6d63353c3ba99e1d16cfe6cce515fbe59e23803993c`；
 - Scientific v1 原离线验收 `84/84 passed`；当前 adapter-native、最小 LiteLLM 健康检查、Judge advisory 解析错误、确定性路由熔断与探针收据复用合同为 `94/94 passed`，Ruff、compileall、封印校验和 PowerShell 语法通过；
 - Scientific v1 数据 manifest SHA-256 为 `5d6d862fc18a0ca001c8a01ac2d2dc96f6e2718cf04aa42290d01988cb715db5`，seal SHA-256 为 `51a7ffdd94f5bde385776f05e0aa1c5f52b40718b9f63a096ea2cddd77fbbc34`；
